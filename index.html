@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0D0A06">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="İlm-i Sîmâ">
+<title>İlm-i Sîmâ — Yüz Okuma Sanatı</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Crimson+Pro:ital,wght@0,300;0,400;1,300;1,400&family=Noto+Naskh+Arabic:wght@400;600&display=swap');
+
+  :root {
+    --gold: #C9A84C;
+    --gold-light: #E8C96A;
+    --gold-dim: #8B6914;
+    --ink: #0D0A06;
+    --parchment: #F5EDD6;
+    --parchment-dark: #E8D9B5;
+    --crimson: #8B1A1A;
+    --teal: #1A5C5C;
+    --cream: #FAF5E8;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background-color: var(--ink);
+    min-height: 100vh;
+    font-family: 'Crimson Pro', Georgia, serif;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* Geometric background pattern */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(201,168,76,0.03) 40px, rgba(201,168,76,0.03) 41px),
+      repeating-linear-gradient(-45deg, transparent, transparent 40px, rgba(201,168,76,0.03) 40px, rgba(201,168,76,0.03) 41px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 40px 20px 80px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  .arabic-title {
+    font-family: 'Noto Naskh Arabic', serif;
+    font-size: 2.4rem;
+    color: var(--gold);
+    letter-spacing: 0.05em;
+    line-height: 1.2;
+    text-shadow: 0 0 40px rgba(201,168,76,0.4);
+    animation: glowPulse 3s ease-in-out infinite;
+  }
+
+  @keyframes glowPulse {
+    0%, 100% { text-shadow: 0 0 30px rgba(201,168,76,0.3); }
+    50% { text-shadow: 0 0 60px rgba(201,168,76,0.6), 0 0 100px rgba(201,168,76,0.2); }
+  }
+
+  .latin-title {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 1.1rem;
+    color: var(--parchment-dark);
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    margin-top: 8px;
+    opacity: 0.8;
+  }
+
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 16px auto;
+    width: 80%;
+  }
+  .divider::before, .divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--gold-dim), transparent);
+  }
+  .divider-ornament {
+    color: var(--gold);
+    font-size: 1.2rem;
+  }
+
+  .subtitle {
+    color: var(--parchment-dark);
+    font-size: 1rem;
+    font-style: italic;
+    opacity: 0.6;
+    letter-spacing: 0.05em;
+  }
+
+  /* Upload Zone */
+  .upload-zone {
+    border: 1px solid rgba(201,168,76,0.3);
+    border-radius: 4px;
+    padding: 48px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.4s ease;
+    position: relative;
+    background: rgba(201,168,76,0.03);
+    margin-bottom: 32px;
+  }
+
+  .upload-zone::before, .upload-zone::after {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-color: var(--gold);
+    border-style: solid;
+    opacity: 0.5;
+  }
+  .upload-zone::before { top: 8px; left: 8px; border-width: 1px 0 0 1px; }
+  .upload-zone::after  { bottom: 8px; right: 8px; border-width: 0 1px 1px 0; }
+
+  .upload-zone:hover {
+    border-color: rgba(201,168,76,0.7);
+    background: rgba(201,168,76,0.07);
+  }
+
+  .upload-zone.dragover {
+    border-color: var(--gold);
+    background: rgba(201,168,76,0.12);
+    transform: scale(1.01);
+  }
+
+  .upload-icon {
+    font-size: 3rem;
+    margin-bottom: 16px;
+    opacity: 0.4;
+    filter: sepia(1);
+  }
+
+  .upload-text {
+    color: var(--parchment-dark);
+    font-size: 1.1rem;
+    font-style: italic;
+    opacity: 0.7;
+  }
+
+  .upload-hint {
+    color: var(--gold-dim);
+    font-size: 0.85rem;
+    margin-top: 8px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  #fileInput { display: none; }
+
+  /* Preview */
+  .preview-container {
+    display: none;
+    margin-bottom: 32px;
+    position: relative;
+  }
+
+  .preview-wrapper {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+  }
+
+  .preview-image {
+    width: 100%;
+    max-height: 420px;
+    object-fit: cover;
+    border-radius: 4px;
+    filter: sepia(0.15) contrast(1.05);
+    display: block;
+  }
+
+  /* Landmark overlay canvas */
+  #landmarkCanvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    border-radius: 4px;
+  }
+
+  /* Scan line animation */
+  .scan-line {
+    position: absolute;
+    left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(to right, transparent, var(--gold), transparent);
+    top: 0;
+    animation: scanDown 2s ease-in-out forwards;
+    display: none;
+    box-shadow: 0 0 8px var(--gold);
+  }
+
+  @keyframes scanDown {
+    0%   { top: 0%; opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+  }
+
+  .corner-tl, .corner-tr, .corner-bl, .corner-br {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    border-color: var(--gold);
+    border-style: solid;
+    opacity: 0.8;
+  }
+  .corner-tl { top: 8px; left: 8px; border-width: 2px 0 0 2px; }
+  .corner-tr { top: 8px; right: 8px; border-width: 2px 2px 0 0; }
+  .corner-bl { bottom: 8px; left: 8px; border-width: 0 0 2px 2px; }
+  .corner-br { bottom: 8px; right: 8px; border-width: 0 2px 2px 0; }
+
+  /* Analyze Button */
+  .analyze-btn {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--gold-dim), var(--gold), var(--gold-dim));
+    background-size: 200% 100%;
+    border: none;
+    color: var(--ink);
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 0.85rem;
+    letter-spacing: 0.2em;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.4s ease;
+    display: none;
+    text-transform: uppercase;
+    margin-bottom: 40px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .analyze-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.2) 50%, transparent 60%);
+    transform: translateX(-100%);
+    transition: transform 0.6s ease;
+  }
+
+  .analyze-btn:hover::before { transform: translateX(100%); }
+  .analyze-btn:hover { background-position: 100% 0; box-shadow: 0 4px 24px rgba(201,168,76,0.3); }
+  .analyze-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Loading */
+  .loading {
+    display: none;
+    text-align: center;
+    padding: 40px;
+  }
+
+  .loading-mandala {
+    width: 60px;
+    height: 60px;
+    border: 1px solid var(--gold-dim);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 16px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-text {
+    color: var(--parchment-dark);
+    font-style: italic;
+    opacity: 0.6;
+    font-size: 0.9rem;
+    letter-spacing: 0.1em;
+  }
+
+  /* Results */
+  .results {
+    display: none;
+    animation: fadeInUp 0.8s ease forwards;
+  }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .result-header {
+    text-align: center;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid rgba(201,168,76,0.2);
+  }
+
+  .result-label {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.4em;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .dominant-trait {
+    font-family: 'Noto Naskh Arabic', serif;
+    font-size: 2rem;
+    color: var(--gold-light);
+    text-shadow: 0 0 30px rgba(201,168,76,0.4);
+  }
+
+  /* Trait Cards */
+  .traits-grid {
+    display: grid;
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .trait-card {
+    background: rgba(201,168,76,0.04);
+    border: 1px solid rgba(201,168,76,0.15);
+    border-radius: 3px;
+    padding: 20px 24px;
+    position: relative;
+    overflow: hidden;
+    opacity: 0;
+    animation: cardReveal 0.5s ease forwards;
+  }
+
+  .trait-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, transparent, var(--gold), transparent);
+  }
+
+  @keyframes cardReveal {
+    from { opacity: 0; transform: translateX(-10px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .trait-name {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 0.65rem;
+    letter-spacing: 0.3em;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .trait-arabic {
+    font-family: 'Noto Naskh Arabic', serif;
+    font-size: 1.1rem;
+    color: var(--gold-light);
+    float: right;
+    opacity: 0.7;
+  }
+
+  .trait-desc {
+    color: var(--parchment);
+    font-size: 1rem;
+    line-height: 1.65;
+    font-weight: 300;
+  }
+
+  .trait-intensity {
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .intensity-bar {
+    flex: 1;
+    height: 2px;
+    background: rgba(201,168,76,0.1);
+    border-radius: 1px;
+    overflow: hidden;
+  }
+
+  .intensity-fill {
+    height: 100%;
+    background: linear-gradient(to right, var(--gold-dim), var(--gold-light));
+    border-radius: 1px;
+    transition: width 1.5s ease;
+  }
+
+  .intensity-label {
+    font-size: 0.75rem;
+    color: var(--gold-dim);
+    font-style: italic;
+    min-width: 60px;
+    text-align: right;
+  }
+
+  /* Overall Reading */
+  .overall-section {
+    background: rgba(201,168,76,0.06);
+    border: 1px solid rgba(201,168,76,0.25);
+    border-radius: 3px;
+    padding: 28px;
+    margin-bottom: 24px;
+    position: relative;
+  }
+
+  .overall-section::before {
+    content: '❧';
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: var(--gold);
+    font-size: 1.4rem;
+    background: var(--ink);
+    padding: 0 8px;
+  }
+
+  .overall-title {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 0.65rem;
+    letter-spacing: 0.3em;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+
+  .overall-text {
+    color: var(--parchment);
+    font-size: 1.05rem;
+    line-height: 1.8;
+    font-style: italic;
+    font-weight: 300;
+  }
+
+  /* Quote */
+  .hadith-quote {
+    text-align: center;
+    padding: 32px;
+    opacity: 0.5;
+  }
+
+  .hadith-text {
+    font-family: 'Noto Naskh Arabic', serif;
+    font-size: 1.2rem;
+    color: var(--gold);
+    margin-bottom: 8px;
+  }
+
+  .hadith-source {
+    color: var(--parchment-dark);
+    font-size: 0.8rem;
+    letter-spacing: 0.15em;
+    font-style: italic;
+  }
+
+  /* Reset */
+  .reset-btn {
+    width: 100%;
+    padding: 12px;
+    background: transparent;
+    border: 1px solid rgba(201,168,76,0.2);
+    color: var(--gold-dim);
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 0.65rem;
+    letter-spacing: 0.3em;
+    cursor: pointer;
+    border-radius: 2px;
+    text-transform: uppercase;
+    transition: all 0.3s;
+    margin-top: 8px;
+  }
+  .reset-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+  /* Error */
+  .error-box {
+    display: none;
+    background: rgba(139,26,26,0.1);
+    border: 1px solid rgba(139,26,26,0.3);
+    color: #E8B4B4;
+    padding: 16px 20px;
+    border-radius: 3px;
+    font-size: 0.9rem;
+    margin-bottom: 24px;
+    text-align: center;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--ink); }
+  ::-webkit-scrollbar-thumb { background: var(--gold-dim); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <div class="arabic-title">علم السيماء</div>
+    <div class="latin-title">İlm-i Sîmâ</div>
+    <div class="divider"><span class="divider-ornament">✦</span></div>
+    <div class="subtitle">Yüz hatlarından karakter ve mizaç analizi</div>
+  </div>
+
+  <div class="upload-zone" id="uploadZone">
+    <div class="upload-icon">◉</div>
+    <div class="upload-text">Yüz fotoğrafı yükleyin</div>
+    <div class="upload-hint">Dokunun veya sürükleyin</div>
+    <input type="file" id="fileInput" accept="image/*">
+  </div>
+
+  <div class="preview-container" id="previewContainer">
+    <div class="preview-wrapper">
+      <img class="preview-image" id="previewImage" alt="Yüklenen görsel">
+      <canvas id="landmarkCanvas"></canvas>
+      <div class="scan-line" id="scanLine"></div>
+      <div class="corner-tl"></div>
+      <div class="corner-tr"></div>
+      <div class="corner-bl"></div>
+      <div class="corner-br"></div>
+    </div>
+  </div>
+
+  <div class="error-box" id="errorBox"></div>
+
+  <button class="analyze-btn" id="analyzeBtn">⬡ Sîmâ'yı Oku</button>
+
+  <div class="loading" id="loading">
+    <div class="loading-mandala"></div>
+    <div class="loading-text">Yüz hatları inceleniyor...</div>
+  </div>
+
+  <div class="results" id="results">
+    <div class="result-header">
+      <div class="result-label">Baskın Mizaç</div>
+      <div class="dominant-trait" id="dominantTrait"></div>
+    </div>
+
+    <div class="traits-grid" id="traitsGrid"></div>
+
+    <div class="overall-section">
+      <div class="overall-title">Genel Kıraat</div>
+      <div class="overall-text" id="overallText"></div>
+    </div>
+
+    <button class="reset-btn" id="resetBtn">↺ Yeni Analiz</button>
+  </div>
+
+  <div class="hadith-quote">
+    <div class="hadith-text">اتَّقُوا فِرَاسَةَ الْمُؤْمِنِ</div>
+    <div class="hadith-source">Mü'minin ferasetinden sakının — Tirmizî</div>
+  </div>
+</div>
+
+<script>
+const uploadZone = document.getElementById('uploadZone');
+const fileInput  = document.getElementById('fileInput');
+const previewContainer = document.getElementById('previewContainer');
+const previewImage = document.getElementById('previewImage');
+const analyzeBtn = document.getElementById('analyzeBtn');
+const loadingEl  = document.getElementById('loading');
+const resultsEl  = document.getElementById('results');
+const errorBox   = document.getElementById('errorBox');
+const scanLine   = document.getElementById('scanLine');
+
+let imageBase64 = null;
+let imageMediaType = 'image/jpeg';
+
+// Upload interactions
+uploadZone.addEventListener('click', () => fileInput.click());
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('dragover');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+function handleFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const dataUrl = e.target.result;
+    const tmpImg = new Image();
+    tmpImg.onload = () => {
+      // Resize + convert to JPEG to keep base64 small and media_type consistent
+      const maxDim = 1024;
+      let w = tmpImg.width, h = tmpImg.height;
+      if (w > h && w > maxDim) { h = h * maxDim / w; w = maxDim; }
+      else if (h > maxDim)     { w = w * maxDim / h; h = maxDim; }
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(tmpImg, 0, 0, w, h);
+      const jpegUrl = c.toDataURL('image/jpeg', 0.85);
+      imageBase64 = jpegUrl.split(',')[1];
+      imageMediaType = 'image/jpeg';
+
+      previewImage.onload = () => {
+        previewContainer.style.display = 'block';
+        analyzeBtn.style.display = 'block';
+        drawLandmarks();
+      };
+      previewImage.src = jpegUrl;
+      resultsEl.style.display = 'none';
+      errorBox.style.display  = 'none';
+    };
+    tmpImg.src = dataUrl;
+  };
+  reader.readAsDataURL(file);
+}
+
+function drawLandmarks() {
+  const canvas = document.getElementById('landmarkCanvas');
+  const img    = previewImage;
+  canvas.width  = img.offsetWidth;
+  canvas.height = img.offsetHeight;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+
+  // Approximate facial landmark positions (normalized)
+  const points = [
+    // Eyebrows
+    [0.28,0.34],[0.33,0.31],[0.38,0.31],[0.43,0.32],[0.47,0.34],
+    [0.53,0.34],[0.57,0.31],[0.62,0.31],[0.67,0.31],[0.72,0.34],
+    // Eyes
+    [0.30,0.40],[0.35,0.38],[0.40,0.38],[0.45,0.40],[0.40,0.42],[0.35,0.42],
+    [0.55,0.40],[0.60,0.38],[0.65,0.38],[0.70,0.40],[0.65,0.42],[0.60,0.42],
+    // Nose
+    [0.50,0.42],[0.50,0.46],[0.50,0.50],[0.46,0.55],[0.50,0.56],[0.54,0.55],
+    // Mouth
+    [0.38,0.65],[0.44,0.62],[0.50,0.61],[0.56,0.62],[0.62,0.65],
+    [0.56,0.69],[0.50,0.71],[0.44,0.69],
+    // Jawline
+    [0.24,0.50],[0.22,0.60],[0.24,0.70],[0.30,0.80],[0.38,0.87],[0.50,0.90],[0.62,0.87],[0.70,0.80],[0.76,0.70],[0.78,0.60],[0.76,0.50],
+  ];
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Draw connection lines
+  ctx.strokeStyle = 'rgba(100,200,255,0.15)';
+  ctx.lineWidth = 0.8;
+
+  // Eye connections
+  const eyeL = points.slice(10,16), eyeR = points.slice(16,22);
+  [eyeL, eyeR].forEach(eye => {
+    ctx.beginPath();
+    eye.forEach(([x,y],i) => i===0 ? ctx.moveTo(x*w,y*h) : ctx.lineTo(x*w,y*h));
+    ctx.closePath();
+    ctx.stroke();
+  });
+
+  // Mouth connections
+  const mouth = points.slice(27,35);
+  ctx.beginPath();
+  mouth.forEach(([x,y],i) => i===0 ? ctx.moveTo(x*w,y*h) : ctx.lineTo(x*w,y*h));
+  ctx.closePath();
+  ctx.stroke();
+
+  // Jawline
+  const jaw = points.slice(35);
+  ctx.beginPath();
+  jaw.forEach(([x,y],i) => i===0 ? ctx.moveTo(x*w,y*h) : ctx.lineTo(x*w,y*h));
+  ctx.stroke();
+
+  // Draw glowing dots
+  points.forEach(([x,y]) => {
+    ctx.beginPath();
+    ctx.arc(x*w, y*h, 3, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(100,200,255,0.8)';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(x*w, y*h, 5, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(100,200,255,0.15)';
+    ctx.fill();
+  });
+}
+
+analyzeBtn.addEventListener('click', analyze);
+
+async function analyze() {
+  if (!imageBase64) return;
+  analyzeBtn.disabled = true;
+  loadingEl.style.display = 'block';
+  resultsEl.style.display = 'none';
+  errorBox.style.display  = 'none';
+
+  // Scan animation
+  scanLine.style.display = 'block';
+  setTimeout(() => { scanLine.style.display = 'none'; }, 2000);
+
+  try {
+    const res = await fetch('/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: imageBase64, mediaType: imageMediaType })
+    });
+
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    renderResults(data);
+  } catch (err) {
+    showError('Hata: ' + err.message);
+    console.error(err);
+  } finally {
+    loadingEl.style.display = 'none';
+    analyzeBtn.disabled = false;
+  }
+}
+
+function renderResults(data) {
+  document.getElementById('dominantTrait').innerHTML =
+    `${data.dominantTrait}<br><span style="font-size:1rem;font-family:'Crimson Pro';font-style:italic;opacity:0.7">${data.dominantTraitTR}</span>`;
+
+  const grid = document.getElementById('traitsGrid');
+  grid.innerHTML = '';
+  data.traits.forEach((t, i) => {
+    const card = document.createElement('div');
+    card.className = 'trait-card';
+    card.style.animationDelay = `${i * 0.12}s`;
+    const intensityText = t.intensity >= 80 ? 'Güçlü' : t.intensity >= 60 ? 'Belirgin' : 'Mütevazı';
+    card.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div class="trait-name">${t.name}</div>
+        <div class="trait-arabic">${t.arabic}</div>
+      </div>
+      <div class="trait-desc">${t.description}</div>
+      <div class="trait-intensity">
+        <div class="intensity-bar"><div class="intensity-fill" style="width:0%" data-width="${t.intensity}%"></div></div>
+        <div class="intensity-label">${intensityText}</div>
+      </div>`;
+    grid.appendChild(card);
+  });
+
+  document.getElementById('overallText').textContent = data.overall;
+  resultsEl.style.display = 'block';
+
+  // Animate intensity bars
+  setTimeout(() => {
+    document.querySelectorAll('.intensity-fill').forEach(bar => {
+      bar.style.width = bar.dataset.width;
+    });
+  }, 300);
+}
+
+function showError(msg) {
+  errorBox.textContent = msg;
+  errorBox.style.display = 'block';
+}
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  imageBase64 = null;
+  previewContainer.style.display = 'none';
+  analyzeBtn.style.display = 'none';
+  resultsEl.style.display = 'none';
+  errorBox.style.display  = 'none';
+  fileInput.value = '';
+  const canvas = document.getElementById('landmarkCanvas');
+  canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
+});
+
+// Redraw landmarks on window resize
+window.addEventListener('resize', () => {
+  if (previewImage.src && previewImage.complete) drawLandmarks();
+});
+</script>
+</body>
+</html>
