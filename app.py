@@ -81,7 +81,12 @@ simetrisi. Bu somut gözlemlere dayanarak ilm-i sîmâ perspektifinden bir anali
 
 ÖNEMLİ:
 - Yorumlar gerçekten gördüğün yüz hatlarına dayansın, genel geçer olmasın.
-- Bu eğlence ve kültürel bir uygulamadır; tıbbi/kesin iddialarda bulunma, klasik üslupta yorumla.
+- DENGELİ ol: her özellikte hem güçlü yönü hem de zaafı/gölge tarafı belirt. İlm-i sîmâ \
+salt övgü değildir; bir hattın hem meziyetini hem de dizginlenmezse nereye kayabileceğini söyler. \
+Mesela "kararlılık gösterir, ama bu inat ve esneksizliğe dönüşebilir" gibi. En az iki özellikte \
+gerçek bir zaaf/gerilim/uyarı bulunsun. Yağcılık yapma, dürüst ama yapıcı ol.
+- Bu eğlence ve kültürel bir uygulamadır; tıbbi/kesin iddialarda bulunma, klasik üslupta yorumla. \
+Kişiyi yıkmadan, ama gerçekçi şekilde gölge yönleri de göster.
 - Analizini sadece "sima_analizi" aracını çağırarak ver."""
 
 
@@ -253,8 +258,11 @@ gezegen yerleşimleri var:
 
 Görevin: Yüzden okuduğun mizaç ile haritadaki gezegen yerleşimlerini TEK bir bütünsel \
 kıraatte harmanlamak. Yüzdeki bir özelliğin haritadaki bir yerleşimle nasıl örtüştüğünü \
-(veya gerilim oluşturduğunu) göster. Bu bir eğlence ve kültürel uygulamadır; klasik \
-üslupla, akıcı ve kişiye özel yaz. Sadece 'karma_kiraat' aracını çağırarak cevap ver."""
+(veya gerilim oluşturduğunu) göster. DENGELİ ol: sadece güçlü yönleri değil, zaafları, iç \
+çelişkileri ve gerilimleri de dürüstçe yaz (örneğin yüz bir şey söylerken haritanın onu \
+nasıl zorladığını). Yağcılık yapma; klasik müneccim üslubunda hem meziyeti hem gölgeyi \
+söyle. Bu bir eğlence ve kültürel uygulamadır; kişiyi yıkmadan ama gerçekçi yaz. \
+Sadece 'karma_kiraat' aracını çağırarak cevap ver."""
 
         message = client.messages.create(
             model=MODEL,
@@ -304,4 +312,3 @@ if __name__ == "__main__":
     print("\n  İlm-i Sîmâ sunucusu başlatılıyor...")
     print(f"  Lokal kullanım:  http://127.0.0.1:{port}\n")
     app.run(host="0.0.0.0", port=port, debug=False)
-
