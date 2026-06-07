@@ -593,6 +593,47 @@
   .bridge-arrow { color: var(--gold-dim); }
   .bridge-note { color: var(--parchment); font-size: 0.98rem; line-height: 1.55; font-weight: 300; }
 
+  /* Ebced kartı */
+  .ebced-card {
+    display: none;
+    text-align: center;
+    background: rgba(201,168,76,0.06);
+    border: 1px solid rgba(201,168,76,0.25);
+    border-radius: 3px;
+    padding: 22px;
+    margin-bottom: 24px;
+  }
+  .ebced-card.show { display: block; }
+  .ebced-label {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 0.65rem;
+    letter-spacing: 0.3em;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .ebced-arabic {
+    font-family: 'Noto Naskh Arabic', serif;
+    font-size: 2rem;
+    color: var(--gold-light);
+    direction: rtl;
+    margin-bottom: 6px;
+  }
+  .ebced-number {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 2.2rem;
+    color: var(--gold);
+    text-shadow: 0 0 25px rgba(201,168,76,0.4);
+    margin-bottom: 12px;
+  }
+  .ebced-yorum {
+    color: var(--parchment);
+    font-size: 0.98rem;
+    line-height: 1.6;
+    font-style: italic;
+    font-weight: 300;
+  }
+
   /* Quote */
   .hadith-quote {
     text-align: center;
@@ -711,13 +752,14 @@
 
     <div class="karma-form" id="karmaForm">
       <div class="karma-form-title">Doğum Bilgilerin</div>
+      <input type="text" id="bName" class="birth-input birth-time" placeholder="İsmin (ebced için, isteğe bağlı)" style="margin-bottom:12px">
       <div class="birth-row">
         <input type="number" id="bDay" class="birth-input" placeholder="Gün" min="1" max="31">
         <input type="number" id="bMonth" class="birth-input" placeholder="Ay" min="1" max="12">
         <input type="number" id="bYear" class="birth-input" placeholder="Yıl" min="1900" max="2025">
       </div>
       <input type="time" id="bTime" class="birth-input birth-time" placeholder="Saat (isteğe bağlı)">
-      <div class="birth-hint">Doğum saatini bilmiyorsan boş bırak.</div>
+      <div class="birth-hint">İsim ve saat isteğe bağlı. Saati bilmiyorsan boş bırak.</div>
       <button class="analyze-btn karma-submit" id="karmaSubmitBtn" style="display:block">⬢ Karmanı Çıkar</button>
     </div>
 
@@ -727,6 +769,7 @@
         <div class="karma-title" id="karmaTitle"></div>
       </div>
       <div class="natal-grid" id="natalGrid"></div>
+      <div class="ebced-card" id="ebcedCard"></div>
       <div class="bridges" id="bridges"></div>
       <div class="overall-section">
         <div class="overall-title">Sîmâ vü Nücûm</div>
@@ -959,7 +1002,7 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   document.getElementById('karmaInvite').style.display = 'block';
   karmaForm.style.display = 'none';
   karmaResult.style.display = 'none';
-  ['bDay','bMonth','bYear','bTime'].forEach(id => document.getElementById(id).value = '');
+  ['bName','bDay','bMonth','bYear','bTime'].forEach(id => document.getElementById(id).value = '');
   const canvas = document.getElementById('landmarkCanvas');
   canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
 });
@@ -981,6 +1024,7 @@ karmaSubmitBtn.addEventListener('click', async () => {
   const month = parseInt(document.getElementById('bMonth').value);
   const year = parseInt(document.getElementById('bYear').value);
   const timeVal = document.getElementById('bTime').value; // "HH:MM" or ""
+  const nameVal = document.getElementById('bName').value.trim();
 
   if (!day || !month || !year) {
     showError('Lütfen gün, ay ve yılı gir.');
@@ -994,7 +1038,7 @@ karmaSubmitBtn.addEventListener('click', async () => {
   }
 
   karmaSubmitBtn.disabled = true;
-  loadingEl.querySelector('.loading-text').textContent = 'Sîmâ ve yıldızlar harmanlanıyor...';
+  loadingEl.querySelector('.loading-text').textContent = 'Sîmâ, yıldızlar ve ebced harmanlanıyor...';
   loadingEl.style.display = 'block';
   karmaResult.style.display = 'none';
   errorBox.style.display = 'none';
@@ -1006,7 +1050,8 @@ karmaSubmitBtn.addEventListener('click', async () => {
       body: JSON.stringify({
         image: imageBase64,
         mediaType: imageMediaType,
-        birth: { year, month, day, hour }
+        birth: { year, month, day, hour },
+        name: nameVal
       })
     });
 
@@ -1058,6 +1103,20 @@ function renderKarma(data) {
       <div class="bridge-note">${k.yorum}</div>`;
     br.appendChild(card);
   });
+
+  // Ebced kartı
+  const ec = document.getElementById('ebcedCard');
+  if (data.ebced) {
+    ec.className = 'ebced-card show';
+    ec.innerHTML = `
+      <div class="ebced-label">İsmin Ebced Değeri</div>
+      <div class="ebced-arabic">${data.ebced.isim_arapca}</div>
+      <div class="ebced-number">${data.ebced.toplam}</div>
+      <div class="ebced-yorum">${data.ebced_yorum || ''}</div>`;
+  } else {
+    ec.className = 'ebced-card';
+    ec.innerHTML = '';
+  }
 
   document.getElementById('karmaText').textContent = data.kiraat || '';
   karmaForm.style.display = 'none';
