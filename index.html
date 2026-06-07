@@ -454,6 +454,145 @@
     font-weight: 300;
   }
 
+  /* KARMA — Doğum haritası katmanı */
+  .karma-invite {
+    text-align: center;
+    padding: 28px 20px;
+    margin: 24px 0;
+    border-top: 1px solid rgba(201,168,76,0.15);
+    border-bottom: 1px solid rgba(201,168,76,0.15);
+  }
+  .karma-invite-title {
+    font-family: 'Cinzel Decorative', serif;
+    color: var(--gold);
+    font-size: 0.85rem;
+    letter-spacing: 0.2em;
+    margin-bottom: 10px;
+  }
+  .karma-invite-text {
+    color: var(--parchment-dark);
+    font-style: italic;
+    font-size: 0.95rem;
+    opacity: 0.75;
+    margin-bottom: 18px;
+    line-height: 1.5;
+  }
+  .karma-toggle-btn {
+    background: transparent;
+    border: 1px solid var(--gold-dim);
+    color: var(--gold);
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    padding: 12px 24px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-transform: uppercase;
+  }
+  .karma-toggle-btn:hover { border-color: var(--gold); background: rgba(201,168,76,0.08); }
+
+  .karma-form {
+    display: none;
+    margin: 24px 0;
+    padding: 24px;
+    background: rgba(201,168,76,0.04);
+    border: 1px solid rgba(201,168,76,0.2);
+    border-radius: 3px;
+  }
+  .karma-form-title {
+    font-family: 'Cinzel Decorative', serif;
+    color: var(--gold);
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    text-align: center;
+    margin-bottom: 18px;
+  }
+  .birth-row { display: flex; gap: 10px; margin-bottom: 12px; }
+  .birth-input {
+    flex: 1;
+    background: rgba(13,10,6,0.6);
+    border: 1px solid rgba(201,168,76,0.25);
+    color: var(--parchment);
+    padding: 12px;
+    border-radius: 2px;
+    font-family: 'Crimson Pro', serif;
+    font-size: 1rem;
+    text-align: center;
+    -webkit-appearance: none;
+  }
+  .birth-input::placeholder { color: rgba(245,237,214,0.4); }
+  .birth-input:focus { outline: none; border-color: var(--gold); }
+  .birth-time { width: 100%; margin-bottom: 8px; }
+  .birth-hint {
+    color: var(--gold-dim);
+    font-size: 0.8rem;
+    font-style: italic;
+    text-align: center;
+    margin-bottom: 18px;
+  }
+  .karma-submit { margin-bottom: 0; }
+
+  .karma-result { display: none; margin-top: 24px; }
+  .karma-result-header {
+    text-align: center;
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(201,168,76,0.2);
+  }
+  .karma-title {
+    font-family: 'Cinzel Decorative', serif;
+    color: var(--gold-light);
+    font-size: 1.3rem;
+    margin-top: 10px;
+    text-shadow: 0 0 25px rgba(201,168,76,0.4);
+    line-height: 1.3;
+  }
+  .natal-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .natal-cell {
+    background: rgba(201,168,76,0.05);
+    border: 1px solid rgba(201,168,76,0.15);
+    border-radius: 3px;
+    padding: 12px 8px;
+    text-align: center;
+  }
+  .natal-planet {
+    font-size: 0.75rem;
+    color: var(--gold-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+  }
+  .natal-sign { color: var(--gold-light); font-size: 1rem; font-weight: 600; }
+  .natal-sign-ar { font-family: 'Noto Naskh Arabic', serif; color: var(--gold); font-size: 0.85rem; opacity: 0.7; }
+
+  .bridges { margin-bottom: 8px; }
+  .bridge-card {
+    background: rgba(201,168,76,0.04);
+    border-left: 2px solid var(--gold);
+    border-radius: 0 3px 3px 0;
+    padding: 14px 18px;
+    margin-bottom: 12px;
+  }
+  .bridge-pair {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: var(--gold);
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+  }
+  .bridge-pair span { opacity: 0.85; }
+  .bridge-arrow { color: var(--gold-dim); }
+  .bridge-note { color: var(--parchment); font-size: 0.98rem; line-height: 1.55; font-weight: 300; }
+
   /* Quote */
   .hadith-quote {
     text-align: center;
@@ -561,6 +700,38 @@
     <div class="overall-section">
       <div class="overall-title">Genel Kıraat</div>
       <div class="overall-text" id="overallText"></div>
+    </div>
+
+    <!-- KARMA: Doğum haritası katmanı -->
+    <div class="karma-invite" id="karmaInvite">
+      <div class="karma-invite-title">✦ Kaderini Tamamla ✦</div>
+      <div class="karma-invite-text">Doğum haritanı da ekle, sîmân ile yıldızların tek kıraatte buluşsun.</div>
+      <button class="karma-toggle-btn" id="karmaToggleBtn">Doğum Haritamı Ekle</button>
+    </div>
+
+    <div class="karma-form" id="karmaForm">
+      <div class="karma-form-title">Doğum Bilgilerin</div>
+      <div class="birth-row">
+        <input type="number" id="bDay" class="birth-input" placeholder="Gün" min="1" max="31">
+        <input type="number" id="bMonth" class="birth-input" placeholder="Ay" min="1" max="12">
+        <input type="number" id="bYear" class="birth-input" placeholder="Yıl" min="1900" max="2025">
+      </div>
+      <input type="time" id="bTime" class="birth-input birth-time" placeholder="Saat (isteğe bağlı)">
+      <div class="birth-hint">Doğum saatini bilmiyorsan boş bırak.</div>
+      <button class="analyze-btn karma-submit" id="karmaSubmitBtn" style="display:block">⬢ Karmanı Çıkar</button>
+    </div>
+
+    <div class="karma-result" id="karmaResult">
+      <div class="karma-result-header">
+        <div class="result-label">Karma Kıraati</div>
+        <div class="karma-title" id="karmaTitle"></div>
+      </div>
+      <div class="natal-grid" id="natalGrid"></div>
+      <div class="bridges" id="bridges"></div>
+      <div class="overall-section">
+        <div class="overall-title">Sîmâ vü Nücûm</div>
+        <div class="overall-text" id="karmaText"></div>
+      </div>
     </div>
 
     <button class="reset-btn" id="resetBtn">↺ Yeni Analiz</button>
@@ -716,7 +887,16 @@ async function analyze() {
       body: JSON.stringify({ image: imageBase64, mediaType: imageMediaType })
     });
 
-    const data = await res.json();
+    const raw = await res.text();
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch (e) {
+      if (res.status === 502 || res.status === 504) {
+        throw new Error('Sunucu cevap veremedi (zaman aşımı). Uygulama uykudan yeni uyanmış olabilir; birkaç saniye bekleyip tekrar dene.');
+      }
+      throw new Error('Sunucudan beklenmeyen cevap (durum ' + res.status + '). Tekrar dene.');
+    }
     if (data.error) throw new Error(data.error);
     renderResults(data);
   } catch (err) {
@@ -775,9 +955,115 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   resultsEl.style.display = 'none';
   errorBox.style.display  = 'none';
   fileInput.value = '';
+  // Karma alanlarını da sıfırla
+  document.getElementById('karmaInvite').style.display = 'block';
+  karmaForm.style.display = 'none';
+  karmaResult.style.display = 'none';
+  ['bDay','bMonth','bYear','bTime'].forEach(id => document.getElementById(id).value = '');
   const canvas = document.getElementById('landmarkCanvas');
   canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
 });
+
+// ---- KARMA: Doğum haritası katmanı ----
+const karmaToggleBtn = document.getElementById('karmaToggleBtn');
+const karmaForm = document.getElementById('karmaForm');
+const karmaSubmitBtn = document.getElementById('karmaSubmitBtn');
+const karmaResult = document.getElementById('karmaResult');
+
+karmaToggleBtn.addEventListener('click', () => {
+  document.getElementById('karmaInvite').style.display = 'none';
+  karmaForm.style.display = 'block';
+  karmaForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+});
+
+karmaSubmitBtn.addEventListener('click', async () => {
+  const day = parseInt(document.getElementById('bDay').value);
+  const month = parseInt(document.getElementById('bMonth').value);
+  const year = parseInt(document.getElementById('bYear').value);
+  const timeVal = document.getElementById('bTime').value; // "HH:MM" or ""
+
+  if (!day || !month || !year) {
+    showError('Lütfen gün, ay ve yılı gir.');
+    return;
+  }
+
+  let hour = 12.0;
+  if (timeVal) {
+    const [h, m] = timeVal.split(':').map(Number);
+    hour = h + (m || 0) / 60;
+  }
+
+  karmaSubmitBtn.disabled = true;
+  loadingEl.querySelector('.loading-text').textContent = 'Sîmâ ve yıldızlar harmanlanıyor...';
+  loadingEl.style.display = 'block';
+  karmaResult.style.display = 'none';
+  errorBox.style.display = 'none';
+
+  try {
+    const res = await fetch('/karma', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        image: imageBase64,
+        mediaType: imageMediaType,
+        birth: { year, month, day, hour }
+      })
+    });
+
+    const raw = await res.text();
+    let data;
+    try { data = JSON.parse(raw); }
+    catch (e) {
+      if (res.status === 502 || res.status === 504)
+        throw new Error('Sunucu cevap veremedi (zaman aşımı). Birkaç saniye sonra tekrar dene.');
+      throw new Error('Sunucudan beklenmeyen cevap (durum ' + res.status + ').');
+    }
+    if (data.error) throw new Error(data.error);
+    renderKarma(data);
+  } catch (err) {
+    showError('Hata: ' + err.message);
+    console.error(err);
+  } finally {
+    loadingEl.style.display = 'none';
+    karmaSubmitBtn.disabled = false;
+  }
+});
+
+function renderKarma(data) {
+  document.getElementById('karmaTitle').textContent = data.baslik || '';
+
+  // Natal grid
+  const ng = document.getElementById('natalGrid');
+  ng.innerHTML = '';
+  if (data.natal) {
+    Object.entries(data.natal).forEach(([planet, v]) => {
+      const cell = document.createElement('div');
+      cell.className = 'natal-cell';
+      cell.innerHTML = `
+        <div class="natal-planet">${planet}</div>
+        <div class="natal-sign">${v.burc}</div>
+        <div class="natal-sign-ar">${v.burc_ar}</div>`;
+      ng.appendChild(cell);
+    });
+  }
+
+  // Bridges
+  const br = document.getElementById('bridges');
+  br.innerHTML = '';
+  (data.kopruler || []).forEach(k => {
+    const card = document.createElement('div');
+    card.className = 'bridge-card';
+    card.innerHTML = `
+      <div class="bridge-pair"><span>${k.yuz}</span> <span class="bridge-arrow">⟷</span> <span>${k.yildiz}</span></div>
+      <div class="bridge-note">${k.yorum}</div>`;
+    br.appendChild(card);
+  });
+
+  document.getElementById('karmaText').textContent = data.kiraat || '';
+  karmaForm.style.display = 'none';
+  karmaResult.style.display = 'block';
+  karmaResult.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 
 // Redraw landmarks on window resize
 window.addEventListener('resize', () => {
