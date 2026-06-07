@@ -1,3 +1,4 @@
 flask==3.0.3
 anthropic>=0.40.0
 gunicorn==23.0.0
+pyswisseph==2.10.3.2
