@@ -59,6 +59,48 @@ def compute_natal(year, month, day, hour=12.0):
         result[name] = {"burc": tr, "burc_ar": ar, "derece": deg}
     return result
 
+
+# ---- Ebced (hisâb el-cümel) hesabı ----
+# Standart ebced-i kebir değerleri (Arapça harf -> sayı)
+EBCED_VALUES = {
+    "ا": 1, "ب": 2, "ج": 3, "د": 4, "ه": 5, "و": 6, "ز": 7, "ح": 8, "ط": 9,
+    "ي": 10, "ك": 20, "ل": 30, "م": 40, "ن": 50, "س": 60, "ع": 70, "ف": 80,
+    "ص": 90, "ق": 100, "ر": 200, "ش": 300, "ت": 400, "ث": 500, "خ": 600,
+    "ذ": 700, "ض": 800, "ظ": 900, "غ": 1000,
+}
+
+# Türkçe Latin harf -> en yakın Arapça harf (deterministik yaklaşım)
+TR_TO_AR = {
+    "a": "ا", "â": "ا", "b": "ب", "c": "ج", "ç": "ج", "d": "د", "e": "ه",
+    "f": "ف", "g": "ك", "ğ": "غ", "h": "ه", "ı": "ا", "i": "ي", "î": "ي",
+    "j": "ز", "k": "ك", "l": "ل", "m": "م", "n": "ن", "o": "و", "ö": "و",
+    "p": "ب", "r": "ر", "s": "س", "ş": "ش", "t": "ت", "u": "و", "ü": "و",
+    "û": "و", "v": "و", "y": "ي", "z": "ز",
+}
+
+
+def compute_ebced(name):
+    """Türkçe ismin yaklaşık ebced (kebir) değerini ve Arapça harf dizisini döndürür."""
+    if not name:
+        return None
+    arabic_letters = []
+    total = 0
+    breakdown = []
+    for ch in name.lower():
+        ar = TR_TO_AR.get(ch)
+        if ar:
+            val = EBCED_VALUES.get(ar, 0)
+            arabic_letters.append(ar)
+            total += val
+            breakdown.append({"harf": ch, "arapca": ar, "deger": val})
+    if not arabic_letters:
+        return None
+    return {
+        "isim_arapca": "".join(arabic_letters),
+        "toplam": total,
+        "dokum": breakdown,
+    }
+
 # API anahtarını ortam değişkeninden oku (güvenli yöntem)
 API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 if not API_KEY:
@@ -210,6 +252,10 @@ KARMA_TOOL = {
                 "type": "string",
                 "description": "Bütünsel karma kıraati, 5-6 cümle, klasik Osmanlı üslubu ama anlaşılır",
             },
+            "ebced_yorum": {
+                "type": "string",
+                "description": "İsim verildiyse, ebced sayısının kısa yorumu (2-3 cümle). İsim yoksa boş bırak.",
+            },
         },
         "required": ["baslik", "kopruler", "kiraat"],
     },
@@ -240,6 +286,10 @@ def karma():
         if natal is None:
             return jsonify({"error": "Doğum haritası modülü kullanılamıyor."}), 500
 
+        # Ebced (isim verildiyse)
+        name = (data.get("name") or "").strip()
+        ebced = compute_ebced(name) if name else None
+
         # Haritayı okunabilir metne çevir
         natal_text = "\n".join(
             f"- {p}: {v['burc']} burcu ({v['derece']}°)" for p, v in natal.items()
@@ -247,22 +297,29 @@ def karma():
         time_note = "Doğum saati verilmedi (öğlen varsayıldı), bu yüzden Ay ve iç gezegenler yaklaşıktır." \
             if birth.get("hour") in (None, "", 12.0) else ""
 
-        karma_prompt = f"""Sen hem İlm-i Sîmâ (yüz okuma) hem de İlm-i Nücûm (doğum haritası) \
-geleneğine hâkim bir Osmanlı müneccim-feraset üstadısın.
+        ebced_text = ""
+        if ebced:
+            ebced_text = (
+                f"\nAYRICA kişinin ismi '{name}' — ebced (hisâb el-cümel) değeri {ebced['toplam']} "
+                f"(Arapça harflerle: {ebced['isim_arapca']}). Bu sayıyı da kıraate kat ve "
+                f"'ebced_yorum' alanında kısaca yorumla."
+            )
+
+        karma_prompt = f"""Sen hem İlm-i Sîmâ (yüz okuma), hem İlm-i Nücûm (doğum haritası), \
+hem de İlm-i Ebced (isim sayısı) geleneğine hâkim bir Osmanlı müneccim-feraset üstadısın.
 
 Bu kişinin YÜZÜNÜ fotoğraftan gerçekten incele. Aşağıda da doğum haritasındaki \
 gezegen yerleşimleri var:
 
 {natal_text}
-{time_note}
+{time_note}{ebced_text}
 
-Görevin: Yüzden okuduğun mizaç ile haritadaki gezegen yerleşimlerini TEK bir bütünsel \
-kıraatte harmanlamak. Yüzdeki bir özelliğin haritadaki bir yerleşimle nasıl örtüştüğünü \
-(veya gerilim oluşturduğunu) göster. DENGELİ ol: sadece güçlü yönleri değil, zaafları, iç \
-çelişkileri ve gerilimleri de dürüstçe yaz (örneğin yüz bir şey söylerken haritanın onu \
-nasıl zorladığını). Yağcılık yapma; klasik müneccim üslubunda hem meziyeti hem gölgeyi \
-söyle. Bu bir eğlence ve kültürel uygulamadır; kişiyi yıkmadan ama gerçekçi yaz. \
-Sadece 'karma_kiraat' aracını çağırarak cevap ver."""
+Görevin: Yüzden okuduğun mizaç ile haritadaki gezegen yerleşimlerini (ve verilmişse isim \
+ebcedini) TEK bir bütünsel kıraatte harmanlamak. Yüzdeki bir özelliğin haritadaki bir \
+yerleşimle nasıl örtüştüğünü (veya gerilim oluşturduğunu) göster. DENGELİ ol: sadece güçlü \
+yönleri değil, zaafları, iç çelişkileri ve gerilimleri de dürüstçe yaz. Yağcılık yapma; \
+klasik müneccim üslubunda hem meziyeti hem gölgeyi söyle. Bu bir eğlence ve kültürel \
+uygulamadır; kişiyi yıkmadan ama gerçekçi yaz. Sadece 'karma_kiraat' aracını çağırarak cevap ver."""
 
         message = client.messages.create(
             model=MODEL,
@@ -296,8 +353,10 @@ Sadece 'karma_kiraat' aracını çağırarak cevap ver."""
         if result is None:
             return jsonify({"error": "Model kıraat üretmedi, tekrar dene."}), 502
 
-        # Hesaplanan haritayı da geri gönder (arayüzde göstermek için)
+        # Hesaplanan haritayı ve ebced'i de geri gönder (arayüzde göstermek için)
         result["natal"] = natal
+        if ebced:
+            result["ebced"] = ebced
         return jsonify(result)
 
     except anthropic.APIError as e:
