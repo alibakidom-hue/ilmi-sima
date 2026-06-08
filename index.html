@@ -634,6 +634,46 @@
     font-weight: 300;
   }
 
+  /* Brifing kartları (Güçlü / Gölge / Dikkat) */
+  .briefing { margin-bottom: 8px; }
+  .brief-card {
+    border: 1px solid rgba(201,168,76,0.18);
+    border-radius: 3px;
+    padding: 18px 20px;
+    margin-bottom: 14px;
+    background: rgba(201,168,76,0.03);
+  }
+  .brief-card.strong { border-left: 3px solid #4CAF7D; }
+  .brief-card.shadow { border-left: 3px solid #8B1A1A; }
+  .brief-card.caution { border-left: 3px solid var(--gold); }
+  .brief-title {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    color: var(--gold);
+  }
+  .brief-card.strong .brief-title { color: #6FD3A0; }
+  .brief-card.shadow .brief-title { color: #E08585; }
+  .brief-list { list-style: none; }
+  .brief-list li {
+    color: var(--parchment);
+    font-size: 0.98rem;
+    line-height: 1.5;
+    padding: 6px 0 6px 20px;
+    position: relative;
+    font-weight: 300;
+  }
+  .brief-list li::before {
+    content: '◈';
+    position: absolute;
+    left: 0;
+    color: var(--gold-dim);
+    font-size: 0.7rem;
+    top: 9px;
+  }
+
   /* Quote */
   .hadith-quote {
     text-align: center;
@@ -770,6 +810,7 @@
       </div>
       <div class="natal-grid" id="natalGrid"></div>
       <div class="ebced-card" id="ebcedCard"></div>
+      <div class="briefing" id="briefing"></div>
       <div class="bridges" id="bridges"></div>
       <div class="overall-section">
         <div class="overall-title">Sîmâ vü Nücûm</div>
@@ -1117,6 +1158,25 @@ function renderKarma(data) {
     ec.className = 'ebced-card';
     ec.innerHTML = '';
   }
+
+  // Brifing kartları
+  const bf = document.getElementById('briefing');
+  bf.innerHTML = '';
+  const sections = [
+    { key: 'guclu_yanlar', cls: 'strong', title: 'Güçlü Yanlar' },
+    { key: 'golge_yanlar', cls: 'shadow', title: 'Gölge Yanlar' },
+    { key: 'dikkat_edilecekler', cls: 'caution', title: 'Dikkat Edilecekler' },
+  ];
+  sections.forEach(s => {
+    const items = data[s.key];
+    if (items && items.length) {
+      const card = document.createElement('div');
+      card.className = 'brief-card ' + s.cls;
+      card.innerHTML = `<div class="brief-title">${s.title}</div>
+        <ul class="brief-list">${items.map(i => `<li>${i}</li>`).join('')}</ul>`;
+      bf.appendChild(card);
+    }
+  });
 
   document.getElementById('karmaText').textContent = data.kiraat || '';
   karmaForm.style.display = 'none';
