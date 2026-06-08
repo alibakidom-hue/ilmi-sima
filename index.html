@@ -187,8 +187,7 @@
 
   .preview-image {
     width: 100%;
-    max-height: 420px;
-    object-fit: cover;
+    height: auto;
     border-radius: 4px;
     filter: sepia(0.15) contrast(1.05);
     display: block;
@@ -827,6 +826,7 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
 <script>
 const uploadZone = document.getElementById('uploadZone');
 const fileInput  = document.getElementById('fileInput');
@@ -884,38 +884,113 @@ function handleFile(file) {
   reader.readAsDataURL(file);
 }
 
-function drawLandmarks() {
+// ---- Yüz noktaları: önce dekoratif (anında), sonra gerçek tespit ----
+let faceModelsLoaded = false;
+
+async function ensureFaceModels() {
+  if (faceModelsLoaded) return true;
+  if (typeof faceapi === 'undefined') return false;
+  try {
+    const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+    await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+    await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+    faceModelsLoaded = true;
+    return true;
+  } catch (e) {
+    console.warn('Yüz modelleri yüklenemedi, dekoratif noktalar kullanılacak.', e);
+    return false;
+  }
+}
+
+function setupCanvas() {
   const canvas = document.getElementById('landmarkCanvas');
-  const img    = previewImage;
-  canvas.width  = img.offsetWidth;
-  canvas.height = img.offsetHeight;
+  canvas.width  = previewImage.offsetWidth;
+  canvas.height = previewImage.offsetHeight;
+  return canvas;
+}
+
+// Ana giriş: anında dekoratif çiz, sonra gerçek tespiti dene
+function drawLandmarks() {
+  drawDecorativeLandmarks();      // anında görsel geri bildirim
+  detectAndDrawReal();            // arka planda gerçek tespit
+}
+
+async function detectAndDrawReal() {
+  try {
+    const ok = await ensureFaceModels();
+    if (!ok || !previewImage.complete) return;
+    const det = await faceapi
+      .detectSingleFace(previewImage, new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.3 }))
+      .withFaceLandmarks();
+    if (!det) return; // yüz bulunamadı → dekoratif kalsın
+    const W = previewImage.offsetWidth, H = previewImage.offsetHeight;
+    const resized = faceapi.resizeResults(det, { width: W, height: H });
+    drawRealLandmarks(resized.landmarks);
+  } catch (e) {
+    console.warn('Yüz tespiti başarısız, dekoratif kullanılıyor.', e);
+  }
+}
+
+function drawRealLandmarks(landmarks) {
+  const canvas = setupCanvas();
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const groups = [
+    landmarks.getJawOutline(),
+    landmarks.getLeftEyeBrow(),
+    landmarks.getRightEyeBrow(),
+    landmarks.getNose(),
+    landmarks.getLeftEye(),
+    landmarks.getRightEye(),
+    landmarks.getMouth(),
+  ];
+  const closed = [false, false, false, false, true, true, true];
+
+  // Bağlantı çizgileri
+  ctx.strokeStyle = 'rgba(100,200,255,0.18)';
+  ctx.lineWidth = 1;
+  groups.forEach((pts, gi) => {
+    ctx.beginPath();
+    pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+    if (closed[gi]) ctx.closePath();
+    ctx.stroke();
+  });
+
+  // Parlayan noktalar
+  landmarks.positions.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(100,200,255,0.85)';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(100,200,255,0.15)';
+    ctx.fill();
+  });
+}
+
+// Yedek: sabit konumlu dekoratif noktalar (tespit çalışmazsa)
+function drawDecorativeLandmarks() {
+  const canvas = setupCanvas();
   const ctx = canvas.getContext('2d');
   const w = canvas.width, h = canvas.height;
 
-  // Approximate facial landmark positions (normalized)
   const points = [
-    // Eyebrows
     [0.28,0.34],[0.33,0.31],[0.38,0.31],[0.43,0.32],[0.47,0.34],
     [0.53,0.34],[0.57,0.31],[0.62,0.31],[0.67,0.31],[0.72,0.34],
-    // Eyes
     [0.30,0.40],[0.35,0.38],[0.40,0.38],[0.45,0.40],[0.40,0.42],[0.35,0.42],
     [0.55,0.40],[0.60,0.38],[0.65,0.38],[0.70,0.40],[0.65,0.42],[0.60,0.42],
-    // Nose
     [0.50,0.42],[0.50,0.46],[0.50,0.50],[0.46,0.55],[0.50,0.56],[0.54,0.55],
-    // Mouth
     [0.38,0.65],[0.44,0.62],[0.50,0.61],[0.56,0.62],[0.62,0.65],
     [0.56,0.69],[0.50,0.71],[0.44,0.69],
-    // Jawline
     [0.24,0.50],[0.22,0.60],[0.24,0.70],[0.30,0.80],[0.38,0.87],[0.50,0.90],[0.62,0.87],[0.70,0.80],[0.76,0.70],[0.78,0.60],[0.76,0.50],
   ];
 
   ctx.clearRect(0, 0, w, h);
-
-  // Draw connection lines
   ctx.strokeStyle = 'rgba(100,200,255,0.15)';
   ctx.lineWidth = 0.8;
 
-  // Eye connections
   const eyeL = points.slice(10,16), eyeR = points.slice(16,22);
   [eyeL, eyeR].forEach(eye => {
     ctx.beginPath();
@@ -924,26 +999,22 @@ function drawLandmarks() {
     ctx.stroke();
   });
 
-  // Mouth connections
   const mouth = points.slice(27,35);
   ctx.beginPath();
   mouth.forEach(([x,y],i) => i===0 ? ctx.moveTo(x*w,y*h) : ctx.lineTo(x*w,y*h));
   ctx.closePath();
   ctx.stroke();
 
-  // Jawline
   const jaw = points.slice(35);
   ctx.beginPath();
   jaw.forEach(([x,y],i) => i===0 ? ctx.moveTo(x*w,y*h) : ctx.lineTo(x*w,y*h));
   ctx.stroke();
 
-  // Draw glowing dots
   points.forEach(([x,y]) => {
     ctx.beginPath();
     ctx.arc(x*w, y*h, 3, 0, Math.PI*2);
     ctx.fillStyle = 'rgba(100,200,255,0.8)';
     ctx.fill();
-
     ctx.beginPath();
     ctx.arc(x*w, y*h, 5, 0, Math.PI*2);
     ctx.fillStyle = 'rgba(100,200,255,0.15)';
