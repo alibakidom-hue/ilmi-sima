@@ -252,12 +252,27 @@ KARMA_TOOL = {
                 "type": "string",
                 "description": "Bütünsel karma kıraati, 5-6 cümle, klasik Osmanlı üslubu ama anlaşılır",
             },
+            "guclu_yanlar": {
+                "type": "array",
+                "description": "Bu kişinin 3-4 güçlü/parlak yanı, kısa maddeler",
+                "items": {"type": "string"},
+            },
+            "golge_yanlar": {
+                "type": "array",
+                "description": "Bu kişinin 3-4 zaafı/gölge yanı, dürüst ama kırıcı olmayan kısa maddeler",
+                "items": {"type": "string"},
+            },
+            "dikkat_edilecekler": {
+                "type": "array",
+                "description": "Bu mizaçla daha iyi anlaşmak/iletişim kurmak için 2-3 pratik not (örn: 'kararlarını acele bekleme'). 'Bu kişiden sakın' gibi yargı DEĞİL, yapıcı tavsiye.",
+                "items": {"type": "string"},
+            },
             "ebced_yorum": {
                 "type": "string",
                 "description": "İsim verildiyse, ebced sayısının kısa yorumu (2-3 cümle). İsim yoksa boş bırak.",
             },
         },
-        "required": ["baslik", "kopruler", "kiraat"],
+        "required": ["baslik", "kopruler", "kiraat", "guclu_yanlar", "golge_yanlar", "dikkat_edilecekler"],
     },
 }
 
@@ -319,7 +334,11 @@ ebcedini) TEK bir bütünsel kıraatte harmanlamak. Yüzdeki bir özelliğin har
 yerleşimle nasıl örtüştüğünü (veya gerilim oluşturduğunu) göster. DENGELİ ol: sadece güçlü \
 yönleri değil, zaafları, iç çelişkileri ve gerilimleri de dürüstçe yaz. Yağcılık yapma; \
 klasik müneccim üslubunda hem meziyeti hem gölgeyi söyle. Bu bir eğlence ve kültürel \
-uygulamadır; kişiyi yıkmadan ama gerçekçi yaz. Sadece 'karma_kiraat' aracını çağırarak cevap ver."""
+uygulamadır; kişiyi yıkmadan ama gerçekçi yaz.
+
+Ayrıca brifing alanlarını da doldur: 'guclu_yanlar' (parlak yanlar), 'golge_yanlar' (zaaflar, \
+dürüst ama kırıcı olmadan), ve 'dikkat_edilecekler' (bu mizaçla daha iyi anlaşmak için yapıcı \
+tavsiyeler — 'şu kişiden sakın' gibi yargı değil). Sadece 'karma_kiraat' aracını çağırarak cevap ver."""
 
         message = client.messages.create(
             model=MODEL,
