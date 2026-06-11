@@ -117,9 +117,17 @@ SIMA_PROMPT = """Sen İlm-i Sîmâ (fizyonomi) uzmanısın. İlm-i Sîmâ, İsla
 geleneğinde yüz hatlarından kişinin mizacını, ahlakını ve karakterini okuma ilmidir. \
 İbn Arabî, Fahreddîn-i Râzî ve Osmanlı âlimlerinin geleneksel yüz okuma metodolojisini kullanıyorsun.
 
-Gönderilen fotoğraftaki kişinin yüzünü GERÇEKTEN dikkatle incele: alın genişliği ve şekli, \
-kaşların yapısı, gözlerin biçimi ve bakışı, burnun hattı, ağız ve dudaklar, çene ve genel yüz \
-simetrisi. Bu somut gözlemlere dayanarak ilm-i sîmâ perspektifinden bir analiz yap.
+Gönderilen fotoğraftaki kişinin yüzünü GERÇEKTEN dikkatle, ayrıntılı incele.
+
+ŞU ALTI OKUMA YERİNİN HER BİRİ İÇİN AYRI bir özellik (trait) üret (toplam 6 trait):
+1. ALIN (الجَبْهَة): genişliği, yüksekliği, çıkıntısı, varsa çizgileri — firâsetin en önemli yeri, ayrıntılı oku.
+2. KAŞLAR (الحَواجِب): kalınlığı, çatıklığı, kavisi, birbirine yakınlığı.
+3. GÖZLER (العُيُون): biçimi, büyüklüğü, bakışın derinliği/canlılığı.
+4. BURUN (الأَنْف): hattı, kemeri, ucu, genişliği.
+5. AĞIZ VE DUDAKLAR (الشِّفَاه): dudak dolgunluğu, ağız hattı, kapanışı.
+6. ÇENE VE YÜZ HATTI (الذَّقَن): çenenin gücü/biçimi, yüzün genel simetrisi ve oranları.
+
+Her trait'in 'name' alanı yukarıdaki Türkçe adı, 'arabic' alanı yanındaki Arapça karşılığı olsun.
 
 ÖNEMLİ:
 - Yorumlar gerçekten gördüğün yüz hatlarına dayansın, genel geçer olmasın.
@@ -185,7 +193,7 @@ def analyze():
 
         message = client.messages.create(
             model=MODEL,
-            max_tokens=2000,
+            max_tokens=2600,
             tools=[SIMA_TOOL],
             tool_choice={"type": "tool", "name": "sima_analizi"},
             messages=[
