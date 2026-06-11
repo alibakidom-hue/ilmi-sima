@@ -392,6 +392,80 @@ tavsiyeler — 'şu kişiden sakın' gibi yargı değil). Sadece 'karma_kiraat' 
         return jsonify({"error": f"Beklenmeyen hata: {str(e)}"}), 500
 
 
+# ---- GÜNLÜK KIRAAT: her gün taze, kişiye özel yorum ----
+GUNLUK_TOOL = {
+    "name": "gunluk_kiraat",
+    "description": "Kişiye ve güne özel kısa günlük kıraat döndürür.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "baslik": {"type": "string", "description": "Güne özel kısa, çarpıcı bir başlık (3-5 kelime)"},
+            "kiraat": {"type": "string", "description": "Bugüne özel kıraat, 3-4 cümle, klasik ama sıcak üslup"},
+            "tavsiye": {"type": "string", "description": "Bugün için tek cümlelik pratik tavsiye"},
+            "ugurlu_sayi": {"type": "integer", "description": "Bugüne özel uğurlu sayı (1-99)"},
+        },
+        "required": ["baslik", "kiraat", "tavsiye", "ugurlu_sayi"],
+    },
+}
+
+
+@app.route("/gunluk", methods=["POST"])
+def gunluk():
+    try:
+        data = request.get_json()
+        birth = data.get("birth", {})
+        name = (data.get("name") or "").strip()
+        today = (data.get("today") or "").strip()  # "2026-06-11" gibi, istemciden gelir
+
+        try:
+            year = int(birth.get("year"))
+            month = int(birth.get("month"))
+            day = int(birth.get("day"))
+            hour = float(birth.get("hour", 12.0))
+        except (TypeError, ValueError):
+            return jsonify({"error": "Doğum bilgisi eksik."}), 400
+
+        natal = compute_natal(year, month, day, hour)
+        ebced = compute_ebced(name) if name else None
+
+        natal_text = ""
+        if natal:
+            natal_text = "Doğum haritası: " + ", ".join(
+                f"{p} {v['burc']}" for p, v in natal.items()
+            )
+        ebced_text = f" İsim ebcedi: {ebced['toplam']}." if ebced else ""
+        kim = f"{name} adlı kişi" if name else "bu kişi"
+
+        prompt = f"""Sen bir Osmanlı müneccim-feraset üstadısın. Bugünün tarihi: {today}.
+
+{kim} için BUGÜNE özel kısa bir 'günün kıraati' yaz. {natal_text}{ebced_text}
+
+Bugünün tarihini ve kişinin haritasını/ebcedini harmanla; her gün farklı, taze ve güne \
+özgü bir yorum olsun (genel geçer değil). Sıcak, klasik ama anlaşılır bir üslup kullan. \
+Bu eğlence ve kültürel bir uygulamadır. Sadece 'gunluk_kiraat' aracını çağırarak cevap ver."""
+
+        message = client.messages.create(
+            model=MODEL,
+            max_tokens=800,
+            tools=[GUNLUK_TOOL],
+            tool_choice={"type": "tool", "name": "gunluk_kiraat"},
+            messages=[{"role": "user", "content": prompt}],
+        )
+        result = None
+        for block in message.content:
+            if block.type == "tool_use" and block.name == "gunluk_kiraat":
+                result = block.input
+                break
+        if result is None:
+            return jsonify({"error": "Kıraat üretilemedi, tekrar dene."}), 502
+        return jsonify(result)
+
+    except anthropic.APIError as e:
+        return jsonify({"error": f"API hatası: {str(e)}"}), 502
+    except Exception as e:
+        return jsonify({"error": f"Beklenmeyen hata: {str(e)}"}), 500
+
+
 if __name__ == "__main__":
     # Bulutta (Render vb.) PORT ortam değişkeni gelir; lokalde 5000 kullanılır.
     port = int(os.environ.get("PORT", 5000))
