@@ -27,6 +27,34 @@
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
+  /* Yıldız alanı (arka plan animasyonu) */
+  #starfield {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  /* Başlık arkasında yavaşça dönen geometrik motif */
+  .header-ornament {
+    position: absolute;
+    top: -40px;
+    left: 50%;
+    width: 260px;
+    height: 260px;
+    transform: translateX(-50%);
+    pointer-events: none;
+    opacity: 0.12;
+    background-image:
+      conic-gradient(from 0deg, transparent 0deg, rgba(201,168,76,0.6) 45deg, transparent 90deg, rgba(201,168,76,0.6) 135deg, transparent 180deg, rgba(201,168,76,0.6) 225deg, transparent 270deg, rgba(201,168,76,0.6) 315deg, transparent 360deg);
+    -webkit-mask: radial-gradient(circle, transparent 60px, black 62px, black 90px, transparent 92px);
+    mask: radial-gradient(circle, transparent 60px, black 62px, black 90px, transparent 92px);
+    animation: spinSlow 40s linear infinite;
+    z-index: -1;
+  }
+
+  @keyframes spinSlow { to { transform: translateX(-50%) rotate(360deg); } }
+
   body {
     background-color: var(--ink);
     min-height: 100vh;
@@ -68,7 +96,13 @@
     letter-spacing: 0.05em;
     line-height: 1.2;
     text-shadow: 0 0 40px rgba(201,168,76,0.4);
-    animation: glowPulse 3s ease-in-out infinite;
+    animation: glowPulse 3s ease-in-out infinite, floatGentle 6s ease-in-out infinite;
+    position: relative;
+  }
+
+  @keyframes floatGentle {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
   }
 
   @keyframes glowPulse {
@@ -123,6 +157,12 @@
     position: relative;
     background: rgba(201,168,76,0.03);
     margin-bottom: 32px;
+    animation: zonePulse 3.5s ease-in-out infinite;
+  }
+
+  @keyframes zonePulse {
+    0%, 100% { box-shadow: 0 0 0 rgba(201,168,76,0); border-color: rgba(201,168,76,0.3); }
+    50% { box-shadow: 0 0 30px rgba(201,168,76,0.12); border-color: rgba(201,168,76,0.55); }
   }
 
   .upload-zone::before, .upload-zone::after {
@@ -153,6 +193,13 @@
     margin-bottom: 16px;
     opacity: 0.4;
     filter: sepia(1);
+    display: inline-block;
+    animation: iconBreathe 4s ease-in-out infinite;
+  }
+
+  @keyframes iconBreathe {
+    0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.35; }
+    50% { transform: scale(1.12) rotate(180deg); opacity: 0.6; }
   }
 
   .upload-text {
@@ -732,9 +779,11 @@
 </style>
 </head>
 <body>
+<canvas id="starfield"></canvas>
 
 <div class="container">
   <div class="header">
+    <div class="header-ornament"></div>
     <div class="arabic-title">علم السيماء</div>
     <div class="latin-title">İlm-i Sîmâ</div>
     <div class="divider"><span class="divider-ornament">✦</span></div>
@@ -828,6 +877,57 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
 <script>
+// ---- Yıldız alanı animasyonu ----
+(function initStarfield() {
+  const canvas = document.getElementById('starfield');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let stars = [];
+  let raf = null;
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const count = Math.min(90, Math.floor(window.innerWidth * window.innerHeight / 14000));
+    stars = [];
+    for (let i = 0; i < count; i++) {
+      stars.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        r: Math.random() * 1.3 + 0.3,
+        baseAlpha: Math.random() * 0.5 + 0.2,
+        twinkleSpeed: Math.random() * 0.02 + 0.005,
+        phase: Math.random() * Math.PI * 2,
+        drift: Math.random() * 0.15 + 0.02,
+      });
+    }
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    stars.forEach(s => {
+      s.phase += s.twinkleSpeed;
+      const alpha = s.baseAlpha + Math.sin(s.phase) * 0.25;
+      s.y -= s.drift;
+      if (s.y < -2) { s.y = canvas.height + 2; s.x = Math.random() * canvas.width; }
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(201,168,76,${Math.max(0, alpha)})`;
+      ctx.fill();
+    });
+    raf = requestAnimationFrame(draw);
+  }
+
+  resize();
+  draw();
+  window.addEventListener('resize', resize);
+  // Sekme gizliyken animasyonu durdur (pil tasarrufu)
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { if (raf) cancelAnimationFrame(raf); }
+    else { draw(); }
+  });
+})();
+
 const uploadZone = document.getElementById('uploadZone');
 const fileInput  = document.getElementById('fileInput');
 const previewContainer = document.getElementById('previewContainer');
