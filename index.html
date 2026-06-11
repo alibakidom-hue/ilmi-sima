@@ -341,8 +341,120 @@
     letter-spacing: 0.1em;
   }
 
+  /* Bugünün Kıraati kartı */
+  .daily-card {
+    border: 1px solid rgba(201,168,76,0.3);
+    border-radius: 4px;
+    padding: 24px;
+    margin-bottom: 28px;
+    background: linear-gradient(180deg, rgba(201,168,76,0.07), rgba(201,168,76,0.02));
+    position: relative;
+  }
+  .daily-label {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 0.68rem;
+    letter-spacing: 0.25em;
+    color: var(--gold);
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  .daily-date {
+    text-align: center;
+    color: var(--gold-dim);
+    font-size: 0.8rem;
+    font-style: italic;
+    margin-bottom: 14px;
+  }
+  .daily-title {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 1.2rem;
+    color: var(--gold-light);
+    text-align: center;
+    text-shadow: 0 0 22px rgba(201,168,76,0.4);
+    margin-bottom: 14px;
+    line-height: 1.3;
+  }
+  .daily-text {
+    color: var(--parchment);
+    font-size: 1.02rem;
+    line-height: 1.7;
+    font-style: italic;
+    text-align: center;
+    margin-bottom: 18px;
+  }
+  .daily-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    border-top: 1px solid rgba(201,168,76,0.15);
+    padding-top: 16px;
+  }
+  .daily-advice {
+    color: var(--parchment-dark);
+    font-size: 0.92rem;
+    font-style: italic;
+    flex: 1;
+  }
+  .daily-number {
+    text-align: center;
+    min-width: 70px;
+  }
+  .daily-number span {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 1.8rem;
+    color: var(--gold);
+    display: block;
+    text-shadow: 0 0 18px rgba(201,168,76,0.4);
+  }
+  .daily-number small {
+    font-size: 0.6rem;
+    color: var(--gold-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .daily-loading { text-align: center; padding: 10px; }
+  .daily-loading .loading-mandala {
+    border: 1px solid var(--gold-dim);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 10px;
+  }
+  .daily-setup-text {
+    color: var(--parchment-dark);
+    font-size: 0.92rem;
+    font-style: italic;
+    text-align: center;
+    margin: 8px 0 16px;
+    line-height: 1.5;
+  }
+  .daily-save-btn {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, var(--gold-dim), var(--gold), var(--gold-dim));
+    border: none;
+    color: var(--ink);
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    cursor: pointer;
+    border-radius: 2px;
+    text-transform: uppercase;
+  }
+  .daily-reset {
+    display: block;
+    margin: 14px auto 0;
+    background: transparent;
+    border: none;
+    color: var(--gold-dim);
+    font-size: 0.75rem;
+    font-style: italic;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+
   /* Tarama sayaç paneli */
-  .scan-stats {
     display: none;
     margin-top: 14px;
     background: rgba(201,168,76,0.05);
@@ -858,6 +970,37 @@
     <div class="latin-title">İlm-i Sîmâ</div>
     <div class="divider"><span class="divider-ornament">✦</span></div>
     <div class="subtitle">Yüz hatlarından karakter ve mizaç analizi</div>
+  </div>
+
+  <!-- BUGÜNÜN KIRAATİ (günlük kanca) -->
+  <div class="daily-card" id="dailyCard">
+    <div class="daily-loading" id="dailyLoading">
+      <div class="loading-mandala" style="width:40px;height:40px"></div>
+      <div class="loading-text">Bugünün kıraati hazırlanıyor...</div>
+    </div>
+    <div class="daily-content" id="dailyContent" style="display:none">
+      <div class="daily-label">✦ BUGÜNÜN KIRAATİ ✦</div>
+      <div class="daily-date" id="dailyDate"></div>
+      <div class="daily-title" id="dailyTitle"></div>
+      <div class="daily-text" id="dailyText"></div>
+      <div class="daily-footer">
+        <div class="daily-advice" id="dailyAdvice"></div>
+        <div class="daily-number"><span id="dailyNumber"></span><small>uğurlu sayı</small></div>
+      </div>
+    </div>
+    <div class="daily-setup" id="dailySetup">
+      <div class="daily-label">✦ BUGÜNÜN KIRAATİ ✦</div>
+      <div class="daily-setup-text">Her gün sana özel taze bir kıraat için doğum bilgini bir kez gir.</div>
+      <input type="text" id="dName" class="birth-input birth-time" placeholder="İsmin (isteğe bağlı)" style="margin-bottom:10px">
+      <div class="birth-row">
+        <input type="number" id="dDay" class="birth-input" placeholder="Gün" min="1" max="31">
+        <input type="number" id="dMonth" class="birth-input" placeholder="Ay" min="1" max="12">
+        <input type="number" id="dYear" class="birth-input" placeholder="Yıl" min="1900" max="2025">
+      </div>
+      <input type="time" id="dTime" class="birth-input birth-time" placeholder="Saat" style="margin-bottom:10px">
+      <button class="daily-save-btn" id="dailySaveBtn">Kaydet ve Başla</button>
+    </div>
+    <button class="daily-reset" id="dailyReset" style="display:none">Doğum bilgimi değiştir</button>
   </div>
 
   <div class="upload-zone" id="uploadZone">
@@ -1728,6 +1871,111 @@ function downloadBlob(blob) {
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
+
+// ---- BUGÜNÜN KIRAATİ (günlük kanca) ----
+const DAILY_KEY = 'sima_birth';
+const DAILY_CACHE = 'sima_daily';
+
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function prettyDate() {
+  const aylar = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+  const d = new Date();
+  return d.getDate() + ' ' + aylar[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+function getBirth() {
+  try { return JSON.parse(localStorage.getItem(DAILY_KEY)); } catch (e) { return null; }
+}
+
+function initDaily() {
+  const birth = getBirth();
+  const setup = document.getElementById('dailySetup');
+  const content = document.getElementById('dailyContent');
+  const loading = document.getElementById('dailyLoading');
+  const resetBtn = document.getElementById('dailyReset');
+  if (!birth) {
+    setup.style.display = 'block';
+    content.style.display = 'none';
+    loading.style.display = 'none';
+    resetBtn.style.display = 'none';
+    return;
+  }
+  setup.style.display = 'none';
+  resetBtn.style.display = 'block';
+  // Bugünün önbelleğine bak
+  let cache = null;
+  try { cache = JSON.parse(localStorage.getItem(DAILY_CACHE)); } catch (e) {}
+  if (cache && cache.date === todayStr() && cache.data) {
+    showDaily(cache.data);
+  } else {
+    fetchDaily(birth);
+  }
+}
+
+async function fetchDaily(birth) {
+  document.getElementById('dailyLoading').style.display = 'block';
+  document.getElementById('dailyContent').style.display = 'none';
+  try {
+    const res = await fetch('/gunluk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ birth, name: birth.name || '', today: todayStr() })
+    });
+    const raw = await res.text();
+    let data;
+    try { data = JSON.parse(raw); }
+    catch (e) { throw new Error('Sunucu yanıtı okunamadı (durum ' + res.status + ').'); }
+    if (data.error) throw new Error(data.error);
+    localStorage.setItem(DAILY_CACHE, JSON.stringify({ date: todayStr(), data }));
+    showDaily(data);
+  } catch (err) {
+    document.getElementById('dailyLoading').innerHTML =
+      '<div class="loading-text" style="opacity:0.8">Bugünün kıraati alınamadı: ' + err.message + '</div>';
+    console.error(err);
+  }
+}
+
+function showDaily(data) {
+  document.getElementById('dailyLoading').style.display = 'none';
+  document.getElementById('dailyContent').style.display = 'block';
+  document.getElementById('dailyDate').textContent = prettyDate();
+  document.getElementById('dailyTitle').textContent = data.baslik || '';
+  document.getElementById('dailyText').textContent = data.kiraat || '';
+  document.getElementById('dailyAdvice').textContent = data.tavsiye ? ('☽ ' + data.tavsiye) : '';
+  document.getElementById('dailyNumber').textContent = (data.ugurlu_sayi != null) ? data.ugurlu_sayi : '';
+}
+
+document.getElementById('dailySaveBtn').addEventListener('click', () => {
+  const day = parseInt(document.getElementById('dDay').value);
+  const month = parseInt(document.getElementById('dMonth').value);
+  const year = parseInt(document.getElementById('dYear').value);
+  const t = document.getElementById('dTime').value;
+  const nm = document.getElementById('dName').value.trim();
+  if (!day || !month || !year) { showError('Lütfen gün, ay ve yılı gir.'); return; }
+  let hour = 12.0;
+  if (t) { const [h, m] = t.split(':').map(Number); hour = h + (m || 0) / 60; }
+  const birth = { year, month, day, hour, name: nm };
+  localStorage.setItem(DAILY_KEY, JSON.stringify(birth));
+  localStorage.removeItem(DAILY_CACHE);
+  initDaily();
+});
+
+document.getElementById('dailyReset').addEventListener('click', () => {
+  const b = getBirth() || {};
+  document.getElementById('dName').value = b.name || '';
+  document.getElementById('dDay').value = b.day || '';
+  document.getElementById('dMonth').value = b.month || '';
+  document.getElementById('dYear').value = b.year || '';
+  document.getElementById('dailySetup').style.display = 'block';
+  document.getElementById('dailyContent').style.display = 'none';
+  document.getElementById('dailyReset').style.display = 'none';
+});
+
+// Açılışta günlük kıraati başlat
+initDaily();
 
 // Redraw landmarks on window resize
 window.addEventListener('resize', () => {
