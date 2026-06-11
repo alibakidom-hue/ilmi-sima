@@ -1173,7 +1173,7 @@ async function detectAndDrawReal() {
     if (!det) return; // yüz bulunamadı → dekoratif kalsın
     const W = previewImage.offsetWidth, H = previewImage.offsetHeight;
     const resized = faceapi.resizeResults(det, { width: W, height: H });
-    drawRealLandmarks(resized.landmarks);
+    drawRealLandmarks(resized.landmarks, resized.detection.box);
   } catch (e) {
     console.warn('Yüz tespiti başarısız, dekoratif kullanılıyor.', e);
   }
@@ -1231,7 +1231,7 @@ function stopLandmarkAnim() {
   if (canvas) canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
 }
 
-function drawRealLandmarks(landmarks) {
+function drawRealLandmarks(landmarks, box) {
   setupCanvas();
   const groups = [
     { pts: landmarks.getJawOutline(), closed: false },
@@ -1242,7 +1242,31 @@ function drawRealLandmarks(landmarks) {
     { pts: landmarks.getRightEye(), closed: true },
     { pts: landmarks.getMouth(), closed: true },
   ];
-  setLandmarks(landmarks.positions.map(p => ({ x: p.x, y: p.y })), groups);
+
+  let pts = landmarks.positions.map(p => ({ x: p.x, y: p.y }));
+
+  // ALIN bölgesi: kaş çizgisinden yukarı, saç çizgisine doğru tahmini noktalar
+  try {
+    const brows = landmarks.getLeftEyeBrow().concat(landmarks.getRightEyeBrow());
+    const browY = Math.min(...brows.map(p => p.y));
+    const topY = box ? box.y : browY - (brows[0] ? 60 : 40);
+    // alın yüksekliği: kaş ile kutu üstü arasının %65'i (saça taşmamak için)
+    const foreheadH = Math.max(20, (browY - topY) * 0.65);
+    const rows = [0.38, 0.72];   // iki sıra
+    const foreheadPts = [];
+    const foreheadLine = [];
+    brows.forEach(b => {
+      rows.forEach(fr => {
+        foreheadPts.push({ x: b.x, y: browY - foreheadH * fr });
+      });
+    });
+    // üst alın çizgisi (kaşları takip eden bir kavis)
+    brows.forEach(b => foreheadLine.push({ x: b.x, y: browY - foreheadH * 0.72 }));
+    pts = pts.concat(foreheadPts);
+    groups.push({ pts: foreheadLine, closed: false });
+  } catch (e) { /* alın tahmini başarısızsa atla */ }
+
+  setLandmarks(pts, groups);
 }
 
 // Yedek: sabit konumlu dekoratif noktalar (tespit çalışmazsa) — yine yanıp söner
@@ -1251,6 +1275,10 @@ function drawDecorativeLandmarks() {
   const w = canvas.width, h = canvas.height;
 
   const N = [
+    // Alın (yeni — kaş üstü)
+    [0.30,0.24],[0.40,0.22],[0.50,0.21],[0.60,0.22],[0.70,0.24],
+    [0.33,0.29],[0.43,0.27],[0.50,0.27],[0.57,0.27],[0.67,0.29],
+    // Kaşlar
     [0.28,0.34],[0.33,0.31],[0.38,0.31],[0.43,0.32],[0.47,0.34],
     [0.53,0.34],[0.57,0.31],[0.62,0.31],[0.67,0.31],[0.72,0.34],
     [0.30,0.40],[0.35,0.38],[0.40,0.38],[0.45,0.40],[0.40,0.42],[0.35,0.42],
@@ -1262,10 +1290,11 @@ function drawDecorativeLandmarks() {
   ];
   const px = N.map(([x, y]) => ({ x: x * w, y: y * h }));
   const lines = [
-    { pts: px.slice(10, 16), closed: true },
-    { pts: px.slice(16, 22), closed: true },
-    { pts: px.slice(27, 35), closed: true },
-    { pts: px.slice(35), closed: false },
+    { pts: px.slice(0, 5), closed: false },     // alın üst çizgi
+    { pts: px.slice(20, 26), closed: true },    // sol göz
+    { pts: px.slice(26, 32), closed: true },    // sağ göz
+    { pts: px.slice(37, 45), closed: true },    // ağız
+    { pts: px.slice(45), closed: false },       // çene
   ];
   setLandmarks(px, lines);
 }
