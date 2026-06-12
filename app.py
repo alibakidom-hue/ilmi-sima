@@ -602,9 +602,38 @@ def eslesme():
         if not img1 or not img2:
             return jsonify({"error": "İki yüz görseli de gerekli."}), 400
 
+        # İsteğe bağlı doğum haritaları
+        birth1 = data.get("birth1") or {}
+        birth2 = data.get("birth2") or {}
+
+        def natal_of(b):
+            try:
+                return compute_natal(int(b["year"]), int(b["month"]), int(b["day"]),
+                                     float(b.get("hour", 12.0)))
+            except (TypeError, ValueError, KeyError):
+                return None
+
+        natal1 = natal_of(birth1)
+        natal2 = natal_of(birth2)
+
+        def natal_str(natal):
+            if not natal:
+                return ""
+            return ", ".join(f"{p} {v['burc']}" for p, v in natal.items())
+
+        astro_block = ""
+        if natal1 or natal2:
+            astro_block = "\n\nİKİ KİŞİNİN DOĞUM HARİTALARI (sinastri/uyum için bunları da harmanla):\n"
+            if natal1:
+                astro_block += f"- Birinci kişi: {natal_str(natal1)}\n"
+            if natal2:
+                astro_block += f"- İkinci kişi: {natal_str(natal2)}\n"
+            astro_block += ("Yüz okumasıyla harita uyumunu birlikte değerlendir; burçların "
+                            "birbirini nasıl tamamladığını ya da gerdiğini de yorumla.")
+
         message = client.messages.create(
             model=MODEL,
-            max_tokens=1800,
+            max_tokens=1900,
             tools=[ESLESME_TOOL],
             tool_choice={"type": "tool", "name": "sima_eslesme"},
             messages=[
@@ -615,7 +644,7 @@ def eslesme():
                         {"type": "image", "source": {"type": "base64", "media_type": mt1, "data": img1}},
                         {"type": "text", "text": "=== İKİNCİ KİŞİ (bu fotoğraf ikinci kişiye aittir) ==="},
                         {"type": "image", "source": {"type": "base64", "media_type": mt2, "data": img2}},
-                        {"type": "text", "text": ESLESME_PROMPT},
+                        {"type": "text", "text": ESLESME_PROMPT + astro_block},
                     ],
                 }
             ],
@@ -627,6 +656,11 @@ def eslesme():
                 break
         if result is None:
             return jsonify({"error": "Eşleşme üretilemedi, tekrar dene."}), 502
+        # Haritaları da döndür (frontend göstermek isterse)
+        if natal1:
+            result["natal1"] = natal1
+        if natal2:
+            result["natal2"] = natal2
         return jsonify(result)
 
     except anthropic.APIError as e:
