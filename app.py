@@ -574,11 +574,18 @@ ESLESME_TOOL = {
 }
 
 ESLESME_PROMPT = """Sen firâset (ilm-i sîmâ) üstadısın. Sana İKİ kişinin yüz fotoğrafı \
-verildi (birincisi ve ikincisi). Her iki yüzü de gerçekten incele ve aralarındaki \
-UYUMU firâset perspektifinden oku.
+verildi: yukarıda 'BİRİNCİ KİŞİ' ve 'İKİNCİ KİŞİ' diye açıkça etiketlendiler. İkisini \
+KARIŞTIRMA; her birinin kendi yüzünü ayrı ayrı, dikkatle incele.
 
-Bu bir 'sîmâ eşleşmesi': iki mizacın bir araya gelince nasıl bir bütün oluşturduğunu, \
-nerede örtüştüklerini ve nerede gerildiklerini Osmanlı kader anlatısı üslubuyla yaz. \
+Aralarındaki UYUMU firâset perspektifinden oku: iki mizacın bir araya gelince nasıl bir \
+bütün oluşturduğunu, nerede örtüştüklerini ve nerede gerildiklerini Osmanlı kader anlatısı \
+üslubuyla yaz.
+
+ÇOK ÖNEMLİ - DOĞRULUK: Göz rengi, ten rengi gibi İNCE AYRINTILARDA emin değilsen kesin \
+hüküm verme (fotoğraf ışığı yanıltabilir). Bu tür ayrıntıları ya hiç söyleme ya da \
+'gibi görünüyor' diye temkinli söyle. Yorumun yüzün GENEL HATLARINA (yüz biçimi, ifade, \
+çene, kaş, genel mizaç) dayansın; uydurma ayrıntıya değil.
+
 DENGELİ ve DÜRÜST ol: sadece güzel şeyler değil, gerçek gerilim/uyumsuzluk noktalarını da \
 söyle. Uyum yüzdesi semboliktir, abartma. Bu eğlence ve kültürel bir uygulamadır; gerçek \
 bir ilişki kararı verdirecek kesin iddialarda bulunma. Sadece 'sima_eslesme' aracını çağır."""
@@ -604,9 +611,9 @@ def eslesme():
                 {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": "Birinci kişi:"},
+                        {"type": "text", "text": "=== BİRİNCİ KİŞİ (bu fotoğraf birinci kişiye aittir) ==="},
                         {"type": "image", "source": {"type": "base64", "media_type": mt1, "data": img1}},
-                        {"type": "text", "text": "İkinci kişi:"},
+                        {"type": "text", "text": "=== İKİNCİ KİŞİ (bu fotoğraf ikinci kişiye aittir) ==="},
                         {"type": "image", "source": {"type": "base64", "media_type": mt2, "data": img2}},
                         {"type": "text", "text": ESLESME_PROMPT},
                     ],
