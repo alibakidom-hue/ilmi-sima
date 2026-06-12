@@ -406,7 +406,31 @@
     font-size: 1.4rem;
   }
   .match-result { display: none; margin-top: 8px; }
-  .match-percent {
+
+  .match-birth-toggle {
+    text-align: center;
+    color: var(--gold-dim);
+    font-size: 0.85rem;
+    font-style: italic;
+    cursor: pointer;
+    margin-bottom: 16px;
+    text-decoration: underline;
+  }
+  .match-birth {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+  .match-birth-col { flex: 1; }
+  .match-birth-label {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 0.62rem;
+    letter-spacing: 0.15em;
+    color: var(--gold);
+    text-align: center;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
     font-family: 'Cinzel Decorative', serif;
     font-size: 2.4rem;
     color: var(--gold-light);
@@ -1121,6 +1145,29 @@
         </div>
         <img class="match-thumb" id="matchThumb2" alt="">
         <input type="file" id="matchFile2" accept="image/*" style="display:none">
+      </div>
+    </div>
+
+    <!-- İsteğe bağlı doğum bilgileri -->
+    <div class="match-birth-toggle" id="matchBirthToggle">＋ Doğum tarihlerini de ekle (isteğe bağlı)</div>
+    <div class="match-birth" id="matchBirth" style="display:none">
+      <div class="match-birth-col">
+        <div class="match-birth-label">Birinci kişi</div>
+        <div class="birth-row">
+          <input type="number" id="m1Day" class="birth-input" placeholder="Gün" min="1" max="31">
+          <input type="number" id="m1Month" class="birth-input" placeholder="Ay" min="1" max="12">
+          <input type="number" id="m1Year" class="birth-input" placeholder="Yıl" min="1900" max="2025">
+        </div>
+        <input type="time" id="m1Time" class="birth-input birth-time" placeholder="Saat">
+      </div>
+      <div class="match-birth-col">
+        <div class="match-birth-label">İkinci kişi</div>
+        <div class="birth-row">
+          <input type="number" id="m2Day" class="birth-input" placeholder="Gün" min="1" max="31">
+          <input type="number" id="m2Month" class="birth-input" placeholder="Ay" min="1" max="12">
+          <input type="number" id="m2Year" class="birth-input" placeholder="Yıl" min="1900" max="2025">
+        </div>
+        <input type="time" id="m2Time" class="birth-input birth-time" placeholder="Saat">
       </div>
     </div>
     <button class="analyze-btn" id="matchBtn" style="display:none">⬢ Eşleşmeyi Çıkar</button>
@@ -2164,6 +2211,28 @@ function setupMatchSlot(slotId, fileId, thumbId, which) {
 setupMatchSlot('matchSlot1', 'matchFile1', 'matchThumb1', 1);
 setupMatchSlot('matchSlot2', 'matchFile2', 'matchThumb2', 2);
 
+// Doğum bilgisi aç/kapa
+document.getElementById('matchBirthToggle').addEventListener('click', () => {
+  const mb = document.getElementById('matchBirth');
+  const open = mb.style.display !== 'none';
+  mb.style.display = open ? 'none' : 'flex';
+  document.getElementById('matchBirthToggle').textContent = open
+    ? '＋ Doğum tarihlerini de ekle (isteğe bağlı)'
+    : '－ Doğum tarihlerini gizle';
+});
+
+// İsteğe bağlı doğum bilgisini topla
+function collectMatchBirth(prefix) {
+  const day = parseInt(document.getElementById(prefix + 'Day').value);
+  const month = parseInt(document.getElementById(prefix + 'Month').value);
+  const year = parseInt(document.getElementById(prefix + 'Year').value);
+  if (!day || !month || !year) return null;
+  const t = document.getElementById(prefix + 'Time').value;
+  let hour = 12.0;
+  if (t) { const [h, m] = t.split(':').map(Number); hour = h + (m || 0) / 60; }
+  return { year, month, day, hour };
+}
+
 document.getElementById('matchBtn').addEventListener('click', async () => {
   if (!matchImg1 || !matchImg2) return;
   const btn = document.getElementById('matchBtn');
@@ -2177,7 +2246,11 @@ document.getElementById('matchBtn').addEventListener('click', async () => {
     const res = await fetch('/eslesme', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image1: matchImg1, image2: matchImg2, mediaType1: 'image/jpeg', mediaType2: 'image/jpeg' })
+      body: JSON.stringify({
+        image1: matchImg1, image2: matchImg2,
+        mediaType1: 'image/jpeg', mediaType2: 'image/jpeg',
+        birth1: collectMatchBirth('m1'), birth2: collectMatchBirth('m2')
+      })
     });
     const raw = await res.text();
     let data;
@@ -2227,6 +2300,7 @@ document.getElementById('matchReset').addEventListener('click', () => {
   matchImg1 = null; matchImg2 = null;
   ['matchThumb1','matchThumb2'].forEach(id => { const t = document.getElementById(id); t.src=''; t.classList.remove('show'); });
   ['matchFile1','matchFile2'].forEach(id => document.getElementById(id).value = '');
+  ['m1Day','m1Month','m1Year','m1Time','m2Day','m2Month','m2Year','m2Time'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('matchBtn').style.display = 'none';
   document.getElementById('matchResult').style.display = 'none';
   errorBox.style.display = 'none';
