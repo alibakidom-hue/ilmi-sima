@@ -466,6 +466,96 @@ Bu eğlence ve kültürel bir uygulamadır. Sadece 'gunluk_kiraat' aracını ça
         return jsonify({"error": f"Beklenmeyen hata: {str(e)}"}), 500
 
 
+# ---- EL SÎMASI: elin/parmakların ŞEKLİNDEN firâset okuması ----
+EL_TOOL = {
+    "name": "el_simasi",
+    "description": "Elin ve parmakların ŞEKLİNDEN firâset okumasını döndürür.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "el_tipi": {
+                "type": "string",
+                "description": "Elin klasik tipi/arketipi (örn: 'Toprak eli', 'Ateş eli' gibi kısa bir nitelik)",
+            },
+            "ozellikler": {
+                "type": "array",
+                "description": "Elin 3-4 okuma yeri (avuç biçimi, parmak uzunluğu/oranı, başparmak, el yapısı)",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "ad": {"type": "string"},
+                        "yorum": {"type": "string"},
+                    },
+                    "required": ["ad", "yorum"],
+                },
+            },
+            "kiraat": {
+                "type": "string",
+                "description": "Elin bütünsel firâset kıraati, 3-4 cümle, dengeli (güçlü + gölge), klasik üslup",
+            },
+        },
+        "required": ["el_tipi", "ozellikler", "kiraat"],
+    },
+}
+
+EL_PROMPT = """Sen firâset (ilm-i sîmâ) geleneğine hâkim bir üstadsın. Firâset yüz kadar \
+bedenin diğer dış işaretlerini de okur; bunlardan biri elin ve parmakların ŞEKLİDİR \
+(avucun biçimi, parmakların uzunluğu ve oranları, başparmağın yapısı, elin genel kuruluşu). \
+DİKKAT: Bu avuç içi ÇİZGİSİ falı (el falı/kiromansi) DEĞİLDİR; sen çizgileri değil, elin \
+ve parmakların biçimini/oranlarını okuyorsun.
+
+Gönderilen el fotoğrafını gerçekten incele ve firâset perspektifinden oku. DENGELİ ol: \
+hem güçlü yönleri hem zaafları söyle, yağcılık yapma. Eğer görselde el net görünmüyorsa \
+bunu kıraatte nazikçe belirt. Bu eğlence ve kültürel bir uygulamadır; tıbbi/kesin iddia yok. \
+Sadece 'el_simasi' aracını çağırarak cevap ver."""
+
+
+@app.route("/el", methods=["POST"])
+def el():
+    try:
+        data = request.get_json()
+        image_b64 = data.get("image")
+        media_type = data.get("mediaType", "image/jpeg")
+        if not image_b64:
+            return jsonify({"error": "El görseli bulunamadı"}), 400
+
+        message = client.messages.create(
+            model=MODEL,
+            max_tokens=1500,
+            tools=[EL_TOOL],
+            tool_choice={"type": "tool", "name": "el_simasi"},
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": media_type,
+                                "data": image_b64,
+                            },
+                        },
+                        {"type": "text", "text": EL_PROMPT},
+                    ],
+                }
+            ],
+        )
+        result = None
+        for block in message.content:
+            if block.type == "tool_use" and block.name == "el_simasi":
+                result = block.input
+                break
+        if result is None:
+            return jsonify({"error": "El okuması üretilemedi, tekrar dene."}), 502
+        return jsonify(result)
+
+    except anthropic.APIError as e:
+        return jsonify({"error": f"API hatası: {str(e)}"}), 502
+    except Exception as e:
+        return jsonify({"error": f"Beklenmeyen hata: {str(e)}"}), 500
+
+
 if __name__ == "__main__":
     # Bulutta (Render vb.) PORT ortam değişkeni gelir; lokalde 5000 kullanılır.
     port = int(os.environ.get("PORT", 5000))
