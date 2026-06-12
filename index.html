@@ -341,6 +341,79 @@
     letter-spacing: 0.1em;
   }
 
+  /* Mod sekmeleri */
+  .mode-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    border: 1px solid rgba(201,168,76,0.2);
+    border-radius: 4px;
+    padding: 4px;
+  }
+  .mode-tab {
+    flex: 1;
+    padding: 12px;
+    background: transparent;
+    border: none;
+    color: var(--gold-dim);
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    border-radius: 2px;
+    text-transform: uppercase;
+    transition: all 0.3s;
+  }
+  .mode-tab.active {
+    background: linear-gradient(135deg, var(--gold-dim), var(--gold), var(--gold-dim));
+    color: var(--ink);
+  }
+
+  /* Eşleşme modu */
+  .match-mode { display: none; }
+  .match-uploads {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .match-slot {
+    flex: 1;
+    aspect-ratio: 1;
+    border: 1px solid rgba(201,168,76,0.3);
+    border-radius: 4px;
+    background: rgba(201,168,76,0.03);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .match-slot-inner { text-align: center; }
+  .match-thumb {
+    display: none;
+    position: absolute;
+    inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    filter: sepia(0.15);
+  }
+  .match-thumb.show { display: block; }
+  .match-amp {
+    font-family: 'Noto Naskh Arabic', serif;
+    color: var(--gold);
+    font-size: 1.4rem;
+  }
+  .match-result { display: none; margin-top: 8px; }
+  .match-percent {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 2.4rem;
+    color: var(--gold-light);
+    text-shadow: 0 0 25px rgba(201,168,76,0.5);
+    margin-top: 10px;
+  }
+
   /* Bugünün Kıraati kartı */
   .daily-card {
     border: 1px solid rgba(201,168,76,0.3);
@@ -1016,11 +1089,55 @@
     <button class="daily-reset" id="dailyReset" style="display:none">Doğum bilgimi değiştir</button>
   </div>
 
+  <!-- Mod seçici -->
+  <div class="mode-tabs">
+    <button class="mode-tab active" id="tabSolo">Sîmâ Okuma</button>
+    <button class="mode-tab" id="tabMatch">Sîmâ Eşleşmesi</button>
+  </div>
+
   <div class="upload-zone" id="uploadZone">
     <div class="upload-icon">◉</div>
     <div class="upload-text">Yüz fotoğrafı yükleyin</div>
     <div class="upload-hint">Dokunun veya sürükleyin</div>
     <input type="file" id="fileInput" accept="image/*">
+  </div>
+
+  <!-- SÎMÂ EŞLEŞMESİ modu -->
+  <div class="match-mode" id="matchMode">
+    <div class="match-uploads">
+      <div class="match-slot" id="matchSlot1">
+        <div class="match-slot-inner">
+          <div class="upload-icon">◐</div>
+          <div class="upload-text">Birinci yüz</div>
+        </div>
+        <img class="match-thumb" id="matchThumb1" alt="">
+        <input type="file" id="matchFile1" accept="image/*" style="display:none">
+      </div>
+      <div class="match-amp">vü</div>
+      <div class="match-slot" id="matchSlot2">
+        <div class="match-slot-inner">
+          <div class="upload-icon">◑</div>
+          <div class="upload-text">İkinci yüz</div>
+        </div>
+        <img class="match-thumb" id="matchThumb2" alt="">
+        <input type="file" id="matchFile2" accept="image/*" style="display:none">
+      </div>
+    </div>
+    <button class="analyze-btn" id="matchBtn" style="display:none">⬢ Eşleşmeyi Çıkar</button>
+
+    <div class="match-result" id="matchResult">
+      <div class="karma-result-header">
+        <div class="result-label">Sîmâ Eşleşmesi</div>
+        <div class="karma-title" id="matchTitle"></div>
+        <div class="match-percent" id="matchPercent"></div>
+      </div>
+      <div class="briefing" id="matchBriefing"></div>
+      <div class="overall-section">
+        <div class="overall-title">Bu İki Sîmâ Bir Araya Gelince</div>
+        <div class="overall-text" id="matchKiraat"></div>
+      </div>
+      <button class="reset-btn" id="matchReset">↺ Yeni Eşleşme</button>
+    </div>
   </div>
 
   <div class="preview-container" id="previewContainer">
@@ -1992,6 +2109,128 @@ function renderEl(data) {
   document.getElementById('elResult').style.display = 'block';
   document.getElementById('elResult').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
+
+// ---- SÎMÂ EŞLEŞMESİ ----
+const tabSolo = document.getElementById('tabSolo');
+const tabMatch = document.getElementById('tabMatch');
+const matchMode = document.getElementById('matchMode');
+let matchImg1 = null, matchImg2 = null;
+
+// Solo modda gizlenecek/gösterilecek bölümler
+const soloEls = ['uploadZone', 'previewContainer', 'results'];
+
+function setMode(match) {
+  if (match) {
+    tabMatch.classList.add('active'); tabSolo.classList.remove('active');
+    matchMode.style.display = 'block';
+    soloEls.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+    document.getElementById('analyzeBtn').style.display = 'none';
+  } else {
+    tabSolo.classList.add('active'); tabMatch.classList.remove('active');
+    matchMode.style.display = 'none';
+    document.getElementById('uploadZone').style.display = 'block';
+  }
+}
+tabSolo.addEventListener('click', () => setMode(false));
+tabMatch.addEventListener('click', () => setMode(true));
+
+function setupMatchSlot(slotId, fileId, thumbId, which) {
+  document.getElementById(slotId).addEventListener('click', () => document.getElementById(fileId).click());
+  document.getElementById(fileId).addEventListener('change', e => {
+    if (!e.target.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const tmp = new Image();
+      tmp.onload = () => {
+        const maxDim = 1024;
+        let w = tmp.width, h = tmp.height;
+        if (w > h && w > maxDim) { h = h * maxDim / w; w = maxDim; }
+        else if (h > maxDim) { w = w * maxDim / h; h = maxDim; }
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        c.getContext('2d').drawImage(tmp, 0, 0, w, h);
+        const jpeg = c.toDataURL('image/jpeg', 0.85);
+        const b64 = jpeg.split(',')[1];
+        if (which === 1) matchImg1 = b64; else matchImg2 = b64;
+        const thumb = document.getElementById(thumbId);
+        thumb.src = jpeg; thumb.classList.add('show');
+        if (matchImg1 && matchImg2) document.getElementById('matchBtn').style.display = 'block';
+      };
+      tmp.src = ev.target.result;
+    };
+    reader.readAsDataURL(e.target.files[0]);
+  });
+}
+setupMatchSlot('matchSlot1', 'matchFile1', 'matchThumb1', 1);
+setupMatchSlot('matchSlot2', 'matchFile2', 'matchThumb2', 2);
+
+document.getElementById('matchBtn').addEventListener('click', async () => {
+  if (!matchImg1 || !matchImg2) return;
+  const btn = document.getElementById('matchBtn');
+  btn.disabled = true;
+  loadingEl.querySelector('.loading-text').textContent = 'İki sîmâ karşılaştırılıyor...';
+  loadingEl.style.display = 'block';
+  document.getElementById('matchResult').style.display = 'none';
+  errorBox.style.display = 'none';
+  Sound.scanStart();
+  try {
+    const res = await fetch('/eslesme', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image1: matchImg1, image2: matchImg2, mediaType1: 'image/jpeg', mediaType2: 'image/jpeg' })
+    });
+    const raw = await res.text();
+    let data;
+    try { data = JSON.parse(raw); }
+    catch (e) {
+      if (res.status === 502 || res.status === 504)
+        throw new Error('Sunucu cevap veremedi (zaman aşımı). Birkaç saniye sonra dene.');
+      throw new Error('Sunucudan beklenmeyen cevap (durum ' + res.status + ').');
+    }
+    if (data.error) throw new Error(data.error);
+    Sound.reveal();
+    renderMatch(data);
+  } catch (err) {
+    showError('Hata: ' + err.message);
+    console.error(err);
+  } finally {
+    loadingEl.style.display = 'none';
+    btn.disabled = false;
+  }
+});
+
+function renderMatch(data) {
+  document.getElementById('matchTitle').textContent = data.baslik || '';
+  document.getElementById('matchPercent').textContent = (data.uyum_yuzdesi != null ? data.uyum_yuzdesi + '%' : '');
+  const bf = document.getElementById('matchBriefing');
+  bf.innerHTML = '';
+  const sections = [
+    { key: 'ortak_yonler', cls: 'strong', title: 'Ortak Yönler' },
+    { key: 'gerilim_noktalari', cls: 'shadow', title: 'Gerilim Noktaları' },
+  ];
+  sections.forEach(s => {
+    const items = data[s.key];
+    if (items && items.length) {
+      const card = document.createElement('div');
+      card.className = 'brief-card ' + s.cls;
+      card.innerHTML = `<div class="brief-title">${s.title}</div>
+        <ul class="brief-list">${items.map(i => `<li>${i}</li>`).join('')}</ul>`;
+      bf.appendChild(card);
+    }
+  });
+  document.getElementById('matchKiraat').textContent = data.kiraat || '';
+  document.getElementById('matchResult').style.display = 'block';
+  document.getElementById('matchResult').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+document.getElementById('matchReset').addEventListener('click', () => {
+  matchImg1 = null; matchImg2 = null;
+  ['matchThumb1','matchThumb2'].forEach(id => { const t = document.getElementById(id); t.src=''; t.classList.remove('show'); });
+  ['matchFile1','matchFile2'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('matchBtn').style.display = 'none';
+  document.getElementById('matchResult').style.display = 'none';
+  errorBox.style.display = 'none';
+});
 
 // ---- BUGÜNÜN KIRAATİ (günlük kanca) ----
 const DAILY_KEY = 'sima_birth';
