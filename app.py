@@ -556,6 +556,78 @@ def el():
         return jsonify({"error": f"Beklenmeyen hata: {str(e)}"}), 500
 
 
+# ---- SÎMÂ EŞLEŞMESİ: iki yüzün firâset uyumu ----
+ESLESME_TOOL = {
+    "name": "sima_eslesme",
+    "description": "İki kişinin sîmâ uyumunu Osmanlı kader anlatısı olarak döndürür.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "baslik": {"type": "string", "description": "Bu eşleşmeye özel kısa, çarpıcı başlık (örn: 'Ateş ile Suyun Buluşması')"},
+            "uyum_yuzdesi": {"type": "integer", "description": "Sembolik uyum yüzdesi (0-100), eğlence amaçlı"},
+            "ortak_yonler": {"type": "array", "description": "2-3 ortak/uyumlu yön", "items": {"type": "string"}},
+            "gerilim_noktalari": {"type": "array", "description": "2-3 gerilim/dikkat noktası", "items": {"type": "string"}},
+            "kiraat": {"type": "string", "description": "'Bu iki sîmâ bir araya gelince' anlatısı, 5-6 cümle, klasik Osmanlı üslubu, dengeli ve dürüst"},
+        },
+        "required": ["baslik", "uyum_yuzdesi", "ortak_yonler", "gerilim_noktalari", "kiraat"],
+    },
+}
+
+ESLESME_PROMPT = """Sen firâset (ilm-i sîmâ) üstadısın. Sana İKİ kişinin yüz fotoğrafı \
+verildi (birincisi ve ikincisi). Her iki yüzü de gerçekten incele ve aralarındaki \
+UYUMU firâset perspektifinden oku.
+
+Bu bir 'sîmâ eşleşmesi': iki mizacın bir araya gelince nasıl bir bütün oluşturduğunu, \
+nerede örtüştüklerini ve nerede gerildiklerini Osmanlı kader anlatısı üslubuyla yaz. \
+DENGELİ ve DÜRÜST ol: sadece güzel şeyler değil, gerçek gerilim/uyumsuzluk noktalarını da \
+söyle. Uyum yüzdesi semboliktir, abartma. Bu eğlence ve kültürel bir uygulamadır; gerçek \
+bir ilişki kararı verdirecek kesin iddialarda bulunma. Sadece 'sima_eslesme' aracını çağır."""
+
+
+@app.route("/eslesme", methods=["POST"])
+def eslesme():
+    try:
+        data = request.get_json()
+        img1 = data.get("image1")
+        img2 = data.get("image2")
+        mt1 = data.get("mediaType1", "image/jpeg")
+        mt2 = data.get("mediaType2", "image/jpeg")
+        if not img1 or not img2:
+            return jsonify({"error": "İki yüz görseli de gerekli."}), 400
+
+        message = client.messages.create(
+            model=MODEL,
+            max_tokens=1800,
+            tools=[ESLESME_TOOL],
+            tool_choice={"type": "tool", "name": "sima_eslesme"},
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "Birinci kişi:"},
+                        {"type": "image", "source": {"type": "base64", "media_type": mt1, "data": img1}},
+                        {"type": "text", "text": "İkinci kişi:"},
+                        {"type": "image", "source": {"type": "base64", "media_type": mt2, "data": img2}},
+                        {"type": "text", "text": ESLESME_PROMPT},
+                    ],
+                }
+            ],
+        )
+        result = None
+        for block in message.content:
+            if block.type == "tool_use" and block.name == "sima_eslesme":
+                result = block.input
+                break
+        if result is None:
+            return jsonify({"error": "Eşleşme üretilemedi, tekrar dene."}), 502
+        return jsonify(result)
+
+    except anthropic.APIError as e:
+        return jsonify({"error": f"API hatası: {str(e)}"}), 502
+    except Exception as e:
+        return jsonify({"error": f"Beklenmeyen hata: {str(e)}"}), 500
+
+
 if __name__ == "__main__":
     # Bulutta (Render vb.) PORT ortam değişkeni gelir; lokalde 5000 kullanılır.
     port = int(os.environ.get("PORT", 5000))
