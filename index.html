@@ -2142,14 +2142,14 @@ function setupMatchSlot(slotId, fileId, thumbId, which) {
     reader.onload = ev => {
       const tmp = new Image();
       tmp.onload = () => {
-        const maxDim = 1024;
+        const maxDim = 1280;
         let w = tmp.width, h = tmp.height;
         if (w > h && w > maxDim) { h = h * maxDim / w; w = maxDim; }
         else if (h > maxDim) { w = w * maxDim / h; h = maxDim; }
         const c = document.createElement('canvas');
         c.width = w; c.height = h;
         c.getContext('2d').drawImage(tmp, 0, 0, w, h);
-        const jpeg = c.toDataURL('image/jpeg', 0.85);
+        const jpeg = c.toDataURL('image/jpeg', 0.9);
         const b64 = jpeg.split(',')[1];
         if (which === 1) matchImg1 = b64; else matchImg2 = b64;
         const thumb = document.getElementById(thumbId);
