@@ -454,6 +454,19 @@
     text-decoration: underline;
   }
 
+  /* El sîması */
+  .el-result { display: none; margin-top: 8px; }
+  .el-preview {
+    width: 100%;
+    max-height: 360px;
+    object-fit: contain;
+    border-radius: 4px;
+    border: 1px solid rgba(201,168,76,0.2);
+    filter: sepia(0.12);
+    margin-bottom: 18px;
+    display: block;
+  }
+
   /* Tarama sayaç paneli */
     display: none;
     margin-top: 14px;
@@ -1090,6 +1103,27 @@
       </div>
     </div>
 
+    <!-- EL SÎMASI katmanı -->
+    <div class="karma-invite" id="elInvite">
+      <div class="karma-invite-title">✦ El Sîmanı da Oku ✦</div>
+      <div class="karma-invite-text">Firâsette elin şekli de bir işarettir. El fotoğrafını ekle, parmakların ve avucun da konuşsun.</div>
+      <button class="karma-toggle-btn" id="elToggleBtn">El Fotoğrafı Ekle</button>
+      <input type="file" id="elFileInput" accept="image/*" style="display:none">
+    </div>
+
+    <div class="el-result" id="elResult">
+      <div class="karma-result-header">
+        <div class="result-label">El Sîması</div>
+        <div class="karma-title" id="elTipi"></div>
+      </div>
+      <img class="el-preview" id="elPreview" alt="El görseli">
+      <div class="briefing" id="elOzellikler"></div>
+      <div class="overall-section">
+        <div class="overall-title">El Kıraati</div>
+        <div class="overall-text" id="elKiraat"></div>
+      </div>
+    </div>
+
     <button class="share-btn" id="shareBtn">◆ Kartı İndir / Paylaş</button>
     <button class="reset-btn" id="resetBtn">↺ Yeni Analiz</button>
   </div>
@@ -1555,6 +1589,11 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   karmaForm.style.display = 'none';
   karmaResult.style.display = 'none';
   ['bName','bDay','bMonth','bYear','bTime'].forEach(id => document.getElementById(id).value = '');
+  // El sîması alanını da sıfırla
+  elImageBase64 = null;
+  document.getElementById('elInvite').style.display = 'block';
+  document.getElementById('elResult').style.display = 'none';
+  elFileInput.value = '';
   stopLandmarkAnim();
 });
 
@@ -1870,6 +1909,88 @@ function downloadBlob(blob) {
   document.body.appendChild(a); a.click();
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+// ---- EL SÎMASI ----
+const elToggleBtn = document.getElementById('elToggleBtn');
+const elFileInput = document.getElementById('elFileInput');
+let elImageBase64 = null;
+
+elToggleBtn.addEventListener('click', () => elFileInput.click());
+elFileInput.addEventListener('change', e => {
+  if (e.target.files[0]) handleElFile(e.target.files[0]);
+});
+
+function handleElFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const dataUrl = e.target.result;
+    const tmp = new Image();
+    tmp.onload = () => {
+      const maxDim = 1024;
+      let w = tmp.width, h = tmp.height;
+      if (w > h && w > maxDim) { h = h * maxDim / w; w = maxDim; }
+      else if (h > maxDim) { w = w * maxDim / h; h = maxDim; }
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(tmp, 0, 0, w, h);
+      const jpeg = c.toDataURL('image/jpeg', 0.85);
+      elImageBase64 = jpeg.split(',')[1];
+      document.getElementById('elPreview').src = jpeg;
+      analyzeEl();
+    };
+    tmp.src = dataUrl;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function analyzeEl() {
+  if (!elImageBase64) return;
+  document.getElementById('elInvite').style.display = 'none';
+  loadingEl.querySelector('.loading-text').textContent = 'El sîması okunuyor...';
+  loadingEl.style.display = 'block';
+  errorBox.style.display = 'none';
+  Sound.scanStart();
+  try {
+    const res = await fetch('/el', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: elImageBase64, mediaType: 'image/jpeg' })
+    });
+    const raw = await res.text();
+    let data;
+    try { data = JSON.parse(raw); }
+    catch (e) {
+      if (res.status === 502 || res.status === 504)
+        throw new Error('Sunucu cevap veremedi (zaman aşımı). Birkaç saniye sonra dene.');
+      throw new Error('Sunucudan beklenmeyen cevap (durum ' + res.status + ').');
+    }
+    if (data.error) throw new Error(data.error);
+    Sound.reveal();
+    renderEl(data);
+  } catch (err) {
+    showError('Hata: ' + err.message);
+    document.getElementById('elInvite').style.display = 'block';
+    console.error(err);
+  } finally {
+    loadingEl.style.display = 'none';
+  }
+}
+
+function renderEl(data) {
+  document.getElementById('elTipi').textContent = data.el_tipi || '';
+  const box = document.getElementById('elOzellikler');
+  box.innerHTML = '';
+  (data.ozellikler || []).forEach(o => {
+    const card = document.createElement('div');
+    card.className = 'brief-card caution';
+    card.innerHTML = `<div class="brief-title">${o.ad}</div>
+      <ul class="brief-list"><li>${o.yorum}</li></ul>`;
+    box.appendChild(card);
+  });
+  document.getElementById('elKiraat').textContent = data.kiraat || '';
+  document.getElementById('elResult').style.display = 'block';
+  document.getElementById('elResult').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // ---- BUGÜNÜN KIRAATİ (günlük kanca) ----
