@@ -342,7 +342,6 @@
   }
 
   /* Mod sekmeleri */
-  .mode-tabs {
     display: flex;
     gap: 8px;
     margin-bottom: 24px;
@@ -899,6 +898,11 @@
     padding: 12px 8px;
     text-align: center;
   }
+  .natal-deg {
+    font-size: 0.7rem;
+    color: var(--gold-dim);
+    margin-top: 3px;
+  }
   .natal-planet {
     font-size: 0.75rem;
     color: var(--gold-dim);
@@ -1159,6 +1163,7 @@
           <input type="number" id="m1Year" class="birth-input" placeholder="Yıl" min="1900" max="2025">
         </div>
         <input type="time" id="m1Time" class="birth-input birth-time" placeholder="Saat">
+        <input type="text" id="m1City" class="birth-input birth-time" placeholder="Şehir" list="cityList" style="margin-top:8px">
       </div>
       <div class="match-birth-col">
         <div class="match-birth-label">İkinci kişi</div>
@@ -1168,6 +1173,7 @@
           <input type="number" id="m2Year" class="birth-input" placeholder="Yıl" min="1900" max="2025">
         </div>
         <input type="time" id="m2Time" class="birth-input birth-time" placeholder="Saat">
+        <input type="text" id="m2City" class="birth-input birth-time" placeholder="Şehir" list="cityList" style="margin-top:8px">
       </div>
     </div>
     <button class="analyze-btn" id="matchBtn" style="display:none">⬢ Eşleşmeyi Çıkar</button>
@@ -1248,7 +1254,8 @@
         <input type="number" id="bYear" class="birth-input" placeholder="Yıl" min="1900" max="2025">
       </div>
       <input type="time" id="bTime" class="birth-input birth-time" placeholder="Saat (isteğe bağlı)">
-      <div class="birth-hint">İsim ve saat isteğe bağlı. Saati bilmiyorsan boş bırak.</div>
+      <input type="text" id="bCity" class="birth-input birth-time" placeholder="Doğduğun şehir (yükselen için)" list="cityList" style="margin-top:10px">
+      <div class="birth-hint">İsim ve saat isteğe bağlı. Yükselen ve evler için şehir + saat gerekir.</div>
       <button class="analyze-btn karma-submit" id="karmaSubmitBtn" style="display:block">⬢ Karmanı Çıkar</button>
     </div>
 
@@ -1293,6 +1300,30 @@
   </div>
 
   <canvas id="shareCanvas" style="display:none"></canvas>
+
+  <datalist id="cityList">
+    <option>Adana</option><option>Adıyaman</option><option>Afyonkarahisar</option><option>Ağrı</option>
+    <option>Amasya</option><option>Ankara</option><option>Antalya</option><option>Artvin</option>
+    <option>Aydın</option><option>Balıkesir</option><option>Bilecik</option><option>Bingöl</option>
+    <option>Bitlis</option><option>Bolu</option><option>Burdur</option><option>Bursa</option>
+    <option>Çanakkale</option><option>Çankırı</option><option>Çorum</option><option>Denizli</option>
+    <option>Diyarbakır</option><option>Edirne</option><option>Elazığ</option><option>Erzincan</option>
+    <option>Erzurum</option><option>Eskişehir</option><option>Gaziantep</option><option>Giresun</option>
+    <option>Gümüşhane</option><option>Hakkari</option><option>Hatay</option><option>Isparta</option>
+    <option>Mersin</option><option>İstanbul</option><option>İzmir</option><option>Kars</option>
+    <option>Kastamonu</option><option>Kayseri</option><option>Kırklareli</option><option>Kırşehir</option>
+    <option>Kocaeli</option><option>Konya</option><option>Kütahya</option><option>Malatya</option>
+    <option>Manisa</option><option>Kahramanmaraş</option><option>Mardin</option><option>Muğla</option>
+    <option>Muş</option><option>Nevşehir</option><option>Niğde</option><option>Ordu</option>
+    <option>Rize</option><option>Sakarya</option><option>Samsun</option><option>Siirt</option>
+    <option>Sinop</option><option>Sivas</option><option>Tekirdağ</option><option>Tokat</option>
+    <option>Trabzon</option><option>Tunceli</option><option>Şanlıurfa</option><option>Uşak</option>
+    <option>Van</option><option>Yozgat</option><option>Zonguldak</option><option>Aksaray</option>
+    <option>Bayburt</option><option>Karaman</option><option>Kırıkkale</option><option>Batman</option>
+    <option>Şırnak</option><option>Bartın</option><option>Ardahan</option><option>Iğdır</option>
+    <option>Yalova</option><option>Karabük</option><option>Kilis</option><option>Osmaniye</option>
+    <option>Düzce</option>
+  </datalist>
 
   <div class="hadith-quote">
     <div class="hadith-text">اتَّقُوا فِرَاسَةَ الْمُؤْمِنِ</div>
@@ -1779,6 +1810,7 @@ karmaSubmitBtn.addEventListener('click', async () => {
   const year = parseInt(document.getElementById('bYear').value);
   const timeVal = document.getElementById('bTime').value; // "HH:MM" or ""
   const nameVal = document.getElementById('bName').value.trim();
+  const cityVal = document.getElementById('bCity').value.trim();
 
   if (!day || !month || !year) {
     showError('Lütfen gün, ay ve yılı gir.');
@@ -1804,7 +1836,7 @@ karmaSubmitBtn.addEventListener('click', async () => {
       body: JSON.stringify({
         image: imageBase64,
         mediaType: imageMediaType,
-        birth: { year, month, day, hour },
+        birth: { year, month, day, hour, city: cityVal },
         name: nameVal
       })
     });
@@ -1839,10 +1871,12 @@ function renderKarma(data) {
     Object.entries(data.natal).forEach(([planet, v]) => {
       const cell = document.createElement('div');
       cell.className = 'natal-cell';
+      const derece = (v.derece != null) ? `<div class="natal-deg">${v.derece}°</div>` : '';
       cell.innerHTML = `
         <div class="natal-planet">${planet}</div>
         <div class="natal-sign">${v.burc}</div>
-        <div class="natal-sign-ar">${v.burc_ar}</div>`;
+        <div class="natal-sign-ar">${v.burc_ar}</div>
+        ${derece}`;
       ng.appendChild(cell);
     });
   }
@@ -2230,7 +2264,8 @@ function collectMatchBirth(prefix) {
   const t = document.getElementById(prefix + 'Time').value;
   let hour = 12.0;
   if (t) { const [h, m] = t.split(':').map(Number); hour = h + (m || 0) / 60; }
-  return { year, month, day, hour };
+  const city = document.getElementById(prefix + 'City').value.trim();
+  return { year, month, day, hour, city };
 }
 
 document.getElementById('matchBtn').addEventListener('click', async () => {
