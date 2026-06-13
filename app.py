@@ -46,18 +46,128 @@ def _sign_of(lon):
     return ZODIAC_TR[i], ZODIAC_AR[i], round(lon % 30, 1)
 
 
-def compute_natal(year, month, day, hour=12.0):
-    """Verilen tarih/saatten gezegen burçlarını döndürür."""
+# Türkiye 81 il — yaklaşık enlem/boylam (yükselen ve ev hesabı için)
+TR_CITIES = {
+    "adana": (37.00, 35.32), "adıyaman": (37.76, 38.28), "afyonkarahisar": (38.76, 30.54),
+    "ağrı": (39.72, 43.05), "amasya": (40.65, 35.83), "ankara": (39.93, 32.86),
+    "antalya": (36.90, 30.70), "artvin": (41.18, 41.82), "aydın": (37.84, 27.84),
+    "balıkesir": (39.65, 27.89), "bilecik": (40.14, 29.98), "bingöl": (38.88, 40.50),
+    "bitlis": (38.40, 42.11), "bolu": (40.74, 31.61), "burdur": (37.72, 30.29),
+    "bursa": (40.18, 29.07), "çanakkale": (40.16, 26.41), "çankırı": (40.60, 33.62),
+    "çorum": (40.55, 34.95), "denizli": (37.78, 29.09), "diyarbakır": (37.91, 40.24),
+    "edirne": (41.68, 26.56), "elazığ": (38.68, 39.22), "erzincan": (39.75, 39.50),
+    "erzurum": (39.90, 41.27), "eskişehir": (39.78, 30.52), "gaziantep": (37.07, 37.38),
+    "giresun": (40.91, 38.39), "gümüşhane": (40.46, 39.48), "hakkari": (37.58, 43.74),
+    "hatay": (36.20, 36.16), "ısparta": (37.76, 30.55), "isparta": (37.76, 30.55),
+    "mersin": (36.81, 34.64), "içel": (36.81, 34.64), "istanbul": (41.01, 28.98),
+    "izmir": (38.42, 27.14), "kars": (40.60, 43.10), "kastamonu": (41.39, 33.78),
+    "kayseri": (38.73, 35.49), "kırklareli": (41.74, 27.22), "kırşehir": (39.15, 34.16),
+    "kocaeli": (40.77, 29.92), "izmit": (40.77, 29.92), "konya": (37.87, 32.48),
+    "kütahya": (39.42, 29.98), "malatya": (38.35, 38.32), "manisa": (38.61, 27.43),
+    "kahramanmaraş": (37.58, 36.93), "maraş": (37.58, 36.93), "mardin": (37.31, 40.74),
+    "muğla": (37.22, 28.36), "muş": (38.74, 41.49), "nevşehir": (38.62, 34.71),
+    "niğde": (37.97, 34.68), "ordu": (40.98, 37.88), "rize": (41.02, 40.52),
+    "sakarya": (40.76, 30.38), "adapazarı": (40.76, 30.38), "samsun": (41.29, 36.33),
+    "siirt": (37.93, 41.94), "sinop": (42.03, 35.15), "sivas": (39.75, 37.02),
+    "tekirdağ": (40.98, 27.51), "tokat": (40.31, 36.55), "trabzon": (41.00, 39.72),
+    "tunceli": (39.11, 39.55), "şanlıurfa": (37.17, 38.79), "urfa": (37.17, 38.79),
+    "uşak": (38.68, 29.41), "van": (38.49, 43.41), "yozgat": (39.82, 34.81),
+    "zonguldak": (41.46, 31.79), "aksaray": (38.37, 34.03), "bayburt": (40.26, 40.23),
+    "karaman": (37.18, 33.22), "kırıkkale": (39.85, 33.52), "batman": (37.88, 41.13),
+    "şırnak": (37.52, 42.46), "bartın": (41.64, 32.34), "ardahan": (41.11, 42.70),
+    "ığdır": (39.92, 44.04), "yalova": (40.65, 29.28), "karabük": (41.20, 32.62),
+    "kilis": (36.72, 37.12), "osmaniye": (37.07, 36.25), "düzce": (40.84, 31.16),
+}
+DEFAULT_COORD = (39.93, 32.86)  # Ankara (yer bilinmezse)
+
+
+def _tr_utc_offset(year, month, day, hour):
+    """Türkiye'nin o tarihteki UTC offset'ini (saat) yaklaşık verir.
+    2016 Eyl'den beri sabit UTC+3. Öncesinde kışın +2, yazın +3 (DST).
+    Tam tarihsel DST geçişleri karmaşıktır; pratikte yeterli bir yaklaşım kullanıyoruz."""
+    if (year > 2016) or (year == 2016 and month >= 9):
+        return 3.0
+    # Kabaca: son hafta sonu mart -> son hafta sonu ekim arası yaz saati (+3), diğer zaman +2
+    if 4 <= month <= 9:
+        return 3.0
+    if month == 3 and day >= 28:
+        return 3.0
+    if month == 10 and day < 28:
+        return 3.0
+    return 2.0
+
+
+def compute_natal(year, month, day, hour=12.0, city=None):
+    """Tam doğum haritası: gezegenler + yükselen + evler.
+    city verilirse koordinat ve saat dilimi düzeltmesi uygulanır."""
     if not ASTRO_OK:
         return None
-    jd = swe.julday(year, month, day, hour)
+
+    # Saat dilimi düzeltmesi: yerel saat -> UTC
+    offset = _tr_utc_offset(year, month, day, hour)
+    ut_hour = hour - offset
+    jd = swe.julday(year, month, day, ut_hour)
     flag = swe.FLG_MOSEPH | swe.FLG_SPEED
-    result = {}
+
+    result = {"gezegenler": {}}
     for name, pid in PLANETS_TR.items():
         res, _ = swe.calc_ut(jd, pid, flag)
         tr, ar, deg = _sign_of(res[0])
-        result[name] = {"burc": tr, "burc_ar": ar, "derece": deg}
+        result["gezegenler"][name] = {"burc": tr, "burc_ar": ar, "derece": deg}
+
+    # Yükselen + evler (Placidus). Koordinat gerekir.
+    lat, lon = DEFAULT_COORD
+    if city:
+        key = city.strip().lower()
+        if key in TR_CITIES:
+            lat, lon = TR_CITIES[key]
+    try:
+        cusps, ascmc = swe.houses(jd, lat, lon, b"P")  # Placidus
+        asc = ascmc[0]   # yükselen
+        mc = ascmc[1]    # tepe noktası (MC)
+        atr, aar, adeg = _sign_of(asc)
+        mtr, mar, mdeg = _sign_of(mc)
+        result["yukselen"] = {"burc": atr, "burc_ar": aar, "derece": adeg}
+        result["mc"] = {"burc": mtr, "burc_ar": mar, "derece": mdeg}
+        houses = []
+        for i in range(12):
+            htr, har, hdeg = _sign_of(cusps[i])
+            houses.append({"ev": i + 1, "burc": htr, "burc_ar": har, "derece": hdeg})
+        result["evler"] = houses
+    except Exception:
+        # Ev hesabı başarısızsa gezegenlerle yetin
+        pass
+
     return result
+
+
+def natal_to_text(natal, detailed=True):
+    """Haritayı LLM'e verilecek okunabilir metne çevirir (yeni yapı uyumlu)."""
+    if not natal:
+        return ""
+    gez = natal.get("gezegenler", {})
+    lines = [f"- {p}: {v['burc']} burcu ({v['derece']}°)" for p, v in gez.items()]
+    if natal.get("yukselen"):
+        y = natal["yukselen"]
+        lines.append(f"- Yükselen (ASC): {y['burc']} ({y['derece']}°)")
+    if natal.get("mc"):
+        m = natal["mc"]
+        lines.append(f"- Tepe Noktası (MC): {m['burc']} ({m['derece']}°)")
+    if detailed and natal.get("evler"):
+        ev_ozet = ", ".join(f"{h['ev']}.ev {h['burc']}" for h in natal["evler"])
+        lines.append(f"- Evler: {ev_ozet}")
+    return "\n".join(lines)
+
+
+def natal_short(natal):
+    """Kısa burç özeti (yükselen dahil)."""
+    if not natal:
+        return ""
+    gez = natal.get("gezegenler", {})
+    parts = [f"{p} {v['burc']}" for p, v in gez.items()]
+    if natal.get("yukselen"):
+        parts.append(f"Yükselen {natal['yukselen']['burc']}")
+    return ", ".join(parts)
 
 
 # ---- Ebced (hisâb el-cümel) hesabı ----
@@ -305,7 +415,7 @@ def karma():
         except (TypeError, ValueError):
             return jsonify({"error": "Doğum tarihi eksik veya hatalı."}), 400
 
-        natal = compute_natal(year, month, day, hour)
+        natal = compute_natal(year, month, day, hour, city=birth.get("city"))
         if natal is None:
             return jsonify({"error": "Doğum haritası modülü kullanılamıyor."}), 500
 
@@ -314,9 +424,7 @@ def karma():
         ebced = compute_ebced(name) if name else None
 
         # Haritayı okunabilir metne çevir
-        natal_text = "\n".join(
-            f"- {p}: {v['burc']} burcu ({v['derece']}°)" for p, v in natal.items()
-        )
+        natal_text = natal_to_text(natal)
         time_note = "Doğum saati verilmedi (öğlen varsayıldı), bu yüzden Ay ve iç gezegenler yaklaşıktır." \
             if birth.get("hour") in (None, "", 12.0) else ""
 
@@ -381,7 +489,15 @@ tavsiyeler — 'şu kişiden sakın' gibi yargı değil). Sadece 'karma_kiraat' 
             return jsonify({"error": "Model kıraat üretmedi, tekrar dene."}), 502
 
         # Hesaplanan haritayı ve ebced'i de geri gönder (arayüzde göstermek için)
-        result["natal"] = natal
+        # Frontend uyumu: gezegenleri üst düzeyde, yükselen/evleri ayrı alanda ver
+        natal_out = dict(natal.get("gezegenler", {}))
+        if natal.get("yukselen"):
+            natal_out["Yükselen"] = natal["yukselen"]
+        result["natal"] = natal_out
+        if natal.get("evler"):
+            result["evler"] = natal["evler"]
+        if natal.get("mc"):
+            result["mc"] = natal["mc"]
         if ebced:
             result["ebced"] = ebced
         return jsonify(result)
@@ -425,14 +541,12 @@ def gunluk():
         except (TypeError, ValueError):
             return jsonify({"error": "Doğum bilgisi eksik."}), 400
 
-        natal = compute_natal(year, month, day, hour)
+        natal = compute_natal(year, month, day, hour, city=birth.get("city"))
         ebced = compute_ebced(name) if name else None
 
         natal_text = ""
         if natal:
-            natal_text = "Doğum haritası: " + ", ".join(
-                f"{p} {v['burc']}" for p, v in natal.items()
-            )
+            natal_text = "Doğum haritası: " + natal_short(natal)
         ebced_text = f" İsim ebcedi: {ebced['toplam']}." if ebced else ""
         kim = f"{name} adlı kişi" if name else "bu kişi"
 
@@ -609,27 +723,22 @@ def eslesme():
         def natal_of(b):
             try:
                 return compute_natal(int(b["year"]), int(b["month"]), int(b["day"]),
-                                     float(b.get("hour", 12.0)))
+                                     float(b.get("hour", 12.0)), city=b.get("city"))
             except (TypeError, ValueError, KeyError):
                 return None
 
         natal1 = natal_of(birth1)
         natal2 = natal_of(birth2)
 
-        def natal_str(natal):
-            if not natal:
-                return ""
-            return ", ".join(f"{p} {v['burc']}" for p, v in natal.items())
-
         astro_block = ""
         if natal1 or natal2:
             astro_block = "\n\nİKİ KİŞİNİN DOĞUM HARİTALARI (sinastri/uyum için bunları da harmanla):\n"
             if natal1:
-                astro_block += f"- Birinci kişi: {natal_str(natal1)}\n"
+                astro_block += f"- Birinci kişi: {natal_short(natal1)}\n"
             if natal2:
-                astro_block += f"- İkinci kişi: {natal_str(natal2)}\n"
+                astro_block += f"- İkinci kişi: {natal_short(natal2)}\n"
             astro_block += ("Yüz okumasıyla harita uyumunu birlikte değerlendir; burçların "
-                            "birbirini nasıl tamamladığını ya da gerdiğini de yorumla.")
+                            "ve yükselenlerin birbirini nasıl tamamladığını ya da gerdiğini de yorumla.")
 
         message = client.messages.create(
             model=MODEL,
