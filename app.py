@@ -15,7 +15,9 @@ import json
 import base64
 
 from flask import Flask, request, jsonify, send_from_directory
-import anthropic
+from google import genai
+from google.genai import types
+from google.genai import errors as genai_errors
 
 # Doğum haritası hesabı (Moshier efemerisi — dış veri/internet gerektirmez)
 try:
@@ -212,16 +214,84 @@ def compute_ebced(name):
     }
 
 # API anahtarını ortam değişkeninden oku (güvenli yöntem)
-API_KEY = os.environ.get("ANTHROPIC_API_KEY")
+API_KEY = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
 if not API_KEY:
-    print("\n[UYARI] ANTHROPIC_API_KEY ortam değişkeni ayarlanmamış!")
-    print("Terminalde şunu çalıştır:  export ANTHROPIC_API_KEY='sk-ant-...'\n")
+    print("\n[UYARI] GEMINI_API_KEY ortam değişkeni ayarlanmamış!")
+    print("Render'da Environment kısmına GEMINI_API_KEY ekle (aistudio.google.com'dan al).\n")
 
-client = anthropic.Anthropic(api_key=API_KEY)
+client = genai.Client(api_key=API_KEY)
 
-# Vision destekli, performans-maliyet dengeli model.
-# İstersen "claude-opus-4-8" (en güçlü) veya "claude-haiku-4-5-20251001" (en ucuz) yapabilirsin.
-MODEL = "claude-sonnet-4-6"
+# Vision destekli, ücretsiz katmanda da çalışan model.
+# İstersen "gemini-2.5-flash-lite" (daha hızlı/ucuz) yapabilirsin.
+MODEL = "gemini-2.5-flash"
+
+
+def _parse_json(text):
+    """Gemini bazen JSON'u ``` çitleri içinde döndürebilir; güvenli ayrıştır."""
+    t = (text or "").strip()
+    if t.startswith("```"):
+        t = t.lstrip("`")
+        if t[:4].lower() == "json":
+            t = t[4:]
+        t = t.strip("`").strip()
+    return json.loads(t)
+
+
+def gemini_json(parts, schema, max_tokens):
+    """Verilen içerik parçalarını Gemini'ye gönderip yapılandırılmış JSON döndürür.
+    parts: metin (str) ve/veya types.Part görsel parçalarından oluşan liste.
+    schema: beklenen JSON şeması (dict).
+    """
+    resp = client.models.generate_content(
+        model=MODEL,
+        contents=parts,
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=schema,
+            max_output_tokens=max_tokens,
+            temperature=0.9,
+        ),
+    )
+    return _parse_json(resp.text)
+
+
+def image_part(image_b64, media_type):
+    """Tarayıcıdan gelen base64 görseli Gemini parçasına çevirir."""
+    raw = base64.b64decode(image_b64)
+    return types.Part.from_bytes(data=raw, mime_type=media_type)
+
+
+def face_parts(data):
+    """Ön/sağ/sol açılardan gelen yüz görsellerini etiketli parçalara çevirir.
+    'image' (ön) zorunlu; 'imageRight' ve 'imageLeft' isteğe bağlıdır.
+    Dönen: (parts_listesi, aci_sayisi) — hiç görsel yoksa (None, 0)."""
+    front = data.get("image")
+    if not front:
+        return None, 0
+    mt = data.get("mediaType", "image/jpeg")
+    parts = ["=== ÖN CEPHE (yüzün karşıdan görünümü) ===",
+             image_part(front, mt)]
+    n = 1
+    right = data.get("imageRight")
+    if right:
+        parts += ["=== SAĞ PROFİL (yüzün sağ yandan görünümü) ===",
+                  image_part(right, data.get("mediaTypeRight", mt))]
+        n += 1
+    left = data.get("imageLeft")
+    if left:
+        parts += ["=== SOL PROFİL (yüzün sol yandan görünümü) ===",
+                  image_part(left, data.get("mediaTypeLeft", mt))]
+        n += 1
+    return parts, n
+
+
+MULTI_ANGLE_NOTE = """
+ÇOK AÇILI OKUMA: Sana aynı kişinin birden fazla açıdan fotoğrafı verildi. Hepsi AYNI kişiye \
+aittir, ayrı kişiler değil. Profil (yandan) görüntüler özellikle burun hattı ve kemeri, alın \
+eğimi, çene çıkıntısı ve yüz derinliği için değerlidir; ön cephe ise simetri, gözler ve genel \
+oranlar için. Okumanı tüm açılardan gördüklerini birleştirerek yap ve mümkün olduğunca \
+profilden gelen bilgiyi de kullan."""
+
 
 SIMA_PROMPT = """Sen İlm-i Sîmâ (fizyonomi) uzmanısın. İlm-i Sîmâ, İslam ve Osmanlı \
 geleneğinde yüz hatlarından kişinin mizacını, ahlakını ve karakterini okuma ilmidir. \
@@ -247,7 +317,7 @@ Mesela "kararlılık gösterir, ama bu inat ve esneksizliğe dönüşebilir" gib
 gerçek bir zaaf/gerilim/uyarı bulunsun. Yağcılık yapma, dürüst ama yapıcı ol.
 - Bu eğlence ve kültürel bir uygulamadır; tıbbi/kesin iddialarda bulunma, klasik üslupta yorumla. \
 Kişiyi yıkmadan, ama gerçekçi şekilde gölge yönleri de göster.
-- Analizini sadece "sima_analizi" aracını çağırarak ver."""
+- Yorumunu yalnızca istenen JSON yapısında ver, başka açıklama ekleme."""
 
 
 # Tool use: çıktının her zaman geçerli yapıda gelmesini garantiler
@@ -295,48 +365,20 @@ def index():
 def analyze():
     try:
         data = request.get_json()
-        image_b64 = data.get("image")
-        media_type = data.get("mediaType", "image/jpeg")
+        parts, n_angles = face_parts(data)
 
-        if not image_b64:
+        if not parts:
             return jsonify({"error": "Görsel bulunamadı"}), 400
 
-        message = client.messages.create(
-            model=MODEL,
-            max_tokens=2600,
-            tools=[SIMA_TOOL],
-            tool_choice={"type": "tool", "name": "sima_analizi"},
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image",
-                            "source": {
-                                "type": "base64",
-                                "media_type": media_type,
-                                "data": image_b64,
-                            },
-                        },
-                        {"type": "text", "text": SIMA_PROMPT},
-                    ],
-                }
-            ],
-        )
-
-        # Araç çıktısını al — bu her zaman geçerli bir sözlüktür
-        result = None
-        for block in message.content:
-            if block.type == "tool_use" and block.name == "sima_analizi":
-                result = block.input
-                break
+        prompt = SIMA_PROMPT + (MULTI_ANGLE_NOTE if n_angles > 1 else "")
+        result = gemini_json(parts + [prompt], SIMA_TOOL["input_schema"], 2600)
 
         if result is None:
             return jsonify({"error": "Model analiz üretmedi, tekrar dene."}), 502
 
         return jsonify(result)
 
-    except anthropic.APIError as e:
+    except genai_errors.APIError as e:
         return jsonify({"error": f"API hatası: {str(e)}"}), 502
     except Exception as e:
         return jsonify({"error": f"Beklenmeyen hata: {str(e)}"}), 500
@@ -399,11 +441,10 @@ KARMA_TOOL = {
 def karma():
     try:
         data = request.get_json()
-        image_b64 = data.get("image")
-        media_type = data.get("mediaType", "image/jpeg")
+        karma_parts, karma_angles = face_parts(data)
         birth = data.get("birth", {})  # {year, month, day, hour}
 
-        if not image_b64:
+        if not karma_parts:
             return jsonify({"error": "Görsel bulunamadı"}), 400
 
         # Doğum haritasını hesapla
@@ -454,36 +495,13 @@ uygulamadır; kişiyi yıkmadan ama gerçekçi yaz.
 
 Ayrıca brifing alanlarını da doldur: 'guclu_yanlar' (parlak yanlar), 'golge_yanlar' (zaaflar, \
 dürüst ama kırıcı olmadan), ve 'dikkat_edilecekler' (bu mizaçla daha iyi anlaşmak için yapıcı \
-tavsiyeler — 'şu kişiden sakın' gibi yargı değil). Sadece 'karma_kiraat' aracını çağırarak cevap ver."""
+tavsiyeler — 'şu kişiden sakın' gibi yargı değil). Yalnızca istenen JSON yapısında cevap ver."""
 
-        message = client.messages.create(
-            model=MODEL,
-            max_tokens=2000,
-            tools=[KARMA_TOOL],
-            tool_choice={"type": "tool", "name": "karma_kiraat"},
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image",
-                            "source": {
-                                "type": "base64",
-                                "media_type": media_type,
-                                "data": image_b64,
-                            },
-                        },
-                        {"type": "text", "text": karma_prompt},
-                    ],
-                }
-            ],
+        result = gemini_json(
+            karma_parts + [karma_prompt + (MULTI_ANGLE_NOTE if karma_angles > 1 else "")],
+            KARMA_TOOL["input_schema"],
+            2000,
         )
-
-        result = None
-        for block in message.content:
-            if block.type == "tool_use" and block.name == "karma_kiraat":
-                result = block.input
-                break
 
         if result is None:
             return jsonify({"error": "Model kıraat üretmedi, tekrar dene."}), 502
@@ -502,7 +520,7 @@ tavsiyeler — 'şu kişiden sakın' gibi yargı değil). Sadece 'karma_kiraat' 
             result["ebced"] = ebced
         return jsonify(result)
 
-    except anthropic.APIError as e:
+    except genai_errors.APIError as e:
         return jsonify({"error": f"API hatası: {str(e)}"}), 502
     except Exception as e:
         return jsonify({"error": f"Beklenmeyen hata: {str(e)}"}), 500
@@ -556,25 +574,14 @@ def gunluk():
 
 Bugünün tarihini ve kişinin haritasını/ebcedini harmanla; her gün farklı, taze ve güne \
 özgü bir yorum olsun (genel geçer değil). Sıcak, klasik ama anlaşılır bir üslup kullan. \
-Bu eğlence ve kültürel bir uygulamadır. Sadece 'gunluk_kiraat' aracını çağırarak cevap ver."""
+Bu eğlence ve kültürel bir uygulamadır. Yalnızca istenen JSON yapısında cevap ver."""
 
-        message = client.messages.create(
-            model=MODEL,
-            max_tokens=800,
-            tools=[GUNLUK_TOOL],
-            tool_choice={"type": "tool", "name": "gunluk_kiraat"},
-            messages=[{"role": "user", "content": prompt}],
-        )
-        result = None
-        for block in message.content:
-            if block.type == "tool_use" and block.name == "gunluk_kiraat":
-                result = block.input
-                break
+        result = gemini_json([prompt], GUNLUK_TOOL["input_schema"], 800)
         if result is None:
             return jsonify({"error": "Kıraat üretilemedi, tekrar dene."}), 502
         return jsonify(result)
 
-    except anthropic.APIError as e:
+    except genai_errors.APIError as e:
         return jsonify({"error": f"API hatası: {str(e)}"}), 502
     except Exception as e:
         return jsonify({"error": f"Beklenmeyen hata: {str(e)}"}), 500
@@ -621,7 +628,7 @@ ve parmakların biçimini/oranlarını okuyorsun.
 Gönderilen el fotoğrafını gerçekten incele ve firâset perspektifinden oku. DENGELİ ol: \
 hem güçlü yönleri hem zaafları söyle, yağcılık yapma. Eğer görselde el net görünmüyorsa \
 bunu kıraatte nazikçe belirt. Bu eğlence ve kültürel bir uygulamadır; tıbbi/kesin iddia yok. \
-Sadece 'el_simasi' aracını çağırarak cevap ver."""
+Yalnızca istenen JSON yapısında cevap ver."""
 
 
 @app.route("/el", methods=["POST"])
@@ -633,38 +640,16 @@ def el():
         if not image_b64:
             return jsonify({"error": "El görseli bulunamadı"}), 400
 
-        message = client.messages.create(
-            model=MODEL,
-            max_tokens=1500,
-            tools=[EL_TOOL],
-            tool_choice={"type": "tool", "name": "el_simasi"},
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image",
-                            "source": {
-                                "type": "base64",
-                                "media_type": media_type,
-                                "data": image_b64,
-                            },
-                        },
-                        {"type": "text", "text": EL_PROMPT},
-                    ],
-                }
-            ],
+        result = gemini_json(
+            [image_part(image_b64, media_type), EL_PROMPT],
+            EL_TOOL["input_schema"],
+            1500,
         )
-        result = None
-        for block in message.content:
-            if block.type == "tool_use" and block.name == "el_simasi":
-                result = block.input
-                break
         if result is None:
             return jsonify({"error": "El okuması üretilemedi, tekrar dene."}), 502
         return jsonify(result)
 
-    except anthropic.APIError as e:
+    except genai_errors.APIError as e:
         return jsonify({"error": f"API hatası: {str(e)}"}), 502
     except Exception as e:
         return jsonify({"error": f"Beklenmeyen hata: {str(e)}"}), 500
@@ -702,7 +687,7 @@ hüküm verme (fotoğraf ışığı yanıltabilir). Bu tür ayrıntıları ya hi
 
 DENGELİ ve DÜRÜST ol: sadece güzel şeyler değil, gerçek gerilim/uyumsuzluk noktalarını da \
 söyle. Uyum yüzdesi semboliktir, abartma. Bu eğlence ve kültürel bir uygulamadır; gerçek \
-bir ilişki kararı verdirecek kesin iddialarda bulunma. Sadece 'sima_eslesme' aracını çağır."""
+bir ilişki kararı verdirecek kesin iddialarda bulunma. Yalnızca istenen JSON yapısında cevap ver."""
 
 
 @app.route("/eslesme", methods=["POST"])
@@ -740,29 +725,17 @@ def eslesme():
             astro_block += ("Yüz okumasıyla harita uyumunu birlikte değerlendir; burçların "
                             "ve yükselenlerin birbirini nasıl tamamladığını ya da gerdiğini de yorumla.")
 
-        message = client.messages.create(
-            model=MODEL,
-            max_tokens=1900,
-            tools=[ESLESME_TOOL],
-            tool_choice={"type": "tool", "name": "sima_eslesme"},
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": "=== BİRİNCİ KİŞİ (bu fotoğraf birinci kişiye aittir) ==="},
-                        {"type": "image", "source": {"type": "base64", "media_type": mt1, "data": img1}},
-                        {"type": "text", "text": "=== İKİNCİ KİŞİ (bu fotoğraf ikinci kişiye aittir) ==="},
-                        {"type": "image", "source": {"type": "base64", "media_type": mt2, "data": img2}},
-                        {"type": "text", "text": ESLESME_PROMPT + astro_block},
-                    ],
-                }
+        result = gemini_json(
+            [
+                "=== BİRİNCİ KİŞİ (bu fotoğraf birinci kişiye aittir) ===",
+                image_part(img1, mt1),
+                "=== İKİNCİ KİŞİ (bu fotoğraf ikinci kişiye aittir) ===",
+                image_part(img2, mt2),
+                ESLESME_PROMPT + astro_block,
             ],
+            ESLESME_TOOL["input_schema"],
+            1900,
         )
-        result = None
-        for block in message.content:
-            if block.type == "tool_use" and block.name == "sima_eslesme":
-                result = block.input
-                break
         if result is None:
             return jsonify({"error": "Eşleşme üretilemedi, tekrar dene."}), 502
         # Haritaları da döndür (frontend göstermek isterse)
@@ -772,7 +745,104 @@ def eslesme():
             result["natal2"] = natal2
         return jsonify(result)
 
-    except anthropic.APIError as e:
+    except genai_errors.APIError as e:
+        return jsonify({"error": f"API hatası: {str(e)}"}), 502
+    except Exception as e:
+        return jsonify({"error": f"Beklenmeyen hata: {str(e)}"}), 500
+
+
+# ---- GELECEK KIRAATİ: aşk, bereket, kariyer, canlılık ----
+def _tema_schema(aciklama):
+    return {
+        "type": "object",
+        "properties": {
+            "baslik": {"type": "string", "description": "Bu tema için kısa çarpıcı başlık (3-5 kelime)"},
+            "kiraat": {"type": "string", "description": aciklama},
+            "isaret": {"type": "string", "description": "Bu okumayı dayandırdığın yüz hattı (örn: 'kaşların kavisi')"},
+            "tavsiye": {"type": "string", "description": "Tek cümlelik yapıcı tavsiye"},
+        },
+        "required": ["baslik", "kiraat", "isaret", "tavsiye"],
+    }
+
+
+GELECEK_TOOL = {
+    "name": "gelecek_kiraati",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "ask": _tema_schema(
+                "Aşk ve gönül yolu: bağlanma biçimi, ilişkide güçlü yanı ve düştüğü tuzak. "
+                "4-5 cümle, klasik ama sıcak üslup."
+            ),
+            "bereket": _tema_schema(
+                "Bereket ve rızık: para ile ilişkisi, kazanma ve harcama eğilimi, bolluk yolu. "
+                "4-5 cümle."
+            ),
+            "kariyer": _tema_schema(
+                "Kariyer ve sanat: hangi işte parlar, hangi ortamda söner, ustalık yolu. 4-5 cümle."
+            ),
+            "canlilik": _tema_schema(
+                "Canlılık ve mizaç dengesi: enerji temposu, dinlenme ihtiyacı, kendini yıprattığı "
+                "alışkanlık. SADECE yaşam temposu ve mizaç; hastalık, teşhis, organ veya tıbbi "
+                "durumdan ASLA söz etme. 4-5 cümle."
+            ),
+            "mühür": {
+                "type": "string",
+                "description": "Tüm okumayı bağlayan tek cümlelik veciz kapanış",
+            },
+        },
+        "required": ["ask", "bereket", "kariyer", "canlilik", "mühür"],
+    },
+}
+
+GELECEK_PROMPT = """Sen İlm-i Sîmâ (firâset) geleneğine hâkim bir Osmanlı üstadısın. \
+Gönderilen yüzü gerçekten dikkatle incele ve bu kişinin YOLU üzerine dört başlıkta kıraat yaz: \
+Aşk, Bereket (rızık), Kariyer, Canlılık.
+
+ÜSLUP VE ÇERÇEVE:
+- Her okumayı gördüğün SOMUT bir yüz hattına dayandır ('isaret' alanında onu söyle). \
+Genel geçer fal cümleleri yazma.
+- Bunlar kesin kehanet değil, MİZACIN EĞİLİMİ'dir. 'Şu tarihte şu olacak' deme; \
+'bu mizaç şuna meyleder, önünü açmak için şunu yapar' dilini kullan.
+- DENGELİ ol: her başlıkta hem parlak yanı hem düşülen tuzağı söyle. Yağcılık yapma.
+- Kişiyi yıkma; gölgeyi söylerken bile yolu göster.
+
+MUTLAK SINIR — CANLILIK BAŞLIĞI: Burada yalnızca yaşam temposu, enerji, dinlenme ve mizaç \
+dengesinden söz et. Hastalık adı verme, teşhis koyma, organ/rahatsızlık ima etme, tıbbi tavsiye \
+verme. 'Şu hastalığa yatkınsın' türü tek bir cümle bile kurma. Bu bir sağlık aracı değildir.
+
+Bu eğlence ve kültürel bir uygulamadır. Yalnızca istenen JSON yapısında cevap ver."""
+
+
+@app.route("/gelecek", methods=["POST"])
+def gelecek():
+    try:
+        data = request.get_json()
+        parts, n_angles = face_parts(data)
+        if not parts:
+            return jsonify({"error": "Görsel bulunamadı"}), 400
+
+        prompt = GELECEK_PROMPT + (MULTI_ANGLE_NOTE if n_angles > 1 else "")
+
+        # Doğum bilgisi verildiyse haritayı da harmanla (isteğe bağlı)
+        birth = data.get("birth") or {}
+        try:
+            natal = compute_natal(
+                int(birth["year"]), int(birth["month"]), int(birth["day"]),
+                float(birth.get("hour", 12.0)), city=birth.get("city"),
+            )
+        except (TypeError, ValueError, KeyError):
+            natal = None
+        if natal:
+            prompt += ("\n\nBu kişinin doğum haritası: " + natal_short(natal) +
+                       "\nYüzden okuduklarınla haritayı harmanla.")
+
+        result = gemini_json(parts + [prompt], GELECEK_TOOL["input_schema"], 2600)
+        if result is None:
+            return jsonify({"error": "Kıraat üretilemedi, tekrar dene."}), 502
+        return jsonify(result)
+
+    except genai_errors.APIError as e:
         return jsonify({"error": f"API hatası: {str(e)}"}), 502
     except Exception as e:
         return jsonify({"error": f"Beklenmeyen hata: {str(e)}"}), 500
