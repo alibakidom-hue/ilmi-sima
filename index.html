@@ -685,6 +685,59 @@
     line-height: 1.5;
   }
 
+  /* Harita imzaları ve konu bazlı alanlar */
+  .alan-baslik {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 0.72rem;
+    letter-spacing: 0.2em;
+    color: var(--gold);
+    text-align: center;
+    margin: 24px 0 14px;
+  }
+  .imza-card {
+    border-left: 2px solid rgba(201,168,76,0.4);
+    padding: 10px 0 10px 14px;
+    margin-bottom: 12px;
+  }
+  .imza-yer {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 0.82rem;
+    color: var(--gold-light);
+    margin-bottom: 5px;
+  }
+  .imza-anlam {
+    color: var(--parchment);
+    font-size: 0.95rem;
+    line-height: 1.65;
+    font-style: italic;
+  }
+  .alan-card {
+    border: 1px solid rgba(201,168,76,0.15);
+    border-radius: 4px;
+    padding: 16px;
+    margin-bottom: 12px;
+    background: rgba(201,168,76,0.03);
+  }
+  .alan-ad {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 0.88rem;
+    color: var(--gold);
+    margin-bottom: 8px;
+  }
+  .alan-yorum {
+    color: var(--parchment);
+    font-size: 0.98rem;
+    line-height: 1.7;
+    margin-bottom: 10px;
+  }
+  .alan-dayanak {
+    font-size: 0.78rem;
+    color: var(--gold-dim);
+    border-top: 1px solid rgba(201,168,76,0.12);
+    padding-top: 8px;
+    font-style: italic;
+  }
+
   .el-result { display: none; margin-top: 8px; }
   .el-preview {
     width: 100%;
@@ -1037,6 +1090,38 @@
     color: var(--gold-dim);
     margin-top: 3px;
   }
+  .natal-retro { color: var(--gold); font-size: 0.7rem; }
+  .acilar { margin: 14px 0 4px; }
+  .acilar-kunye {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--parchment-dark);
+    margin-bottom: 12px;
+  }
+  .acilar-baslik {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 0.62rem;
+    letter-spacing: 0.2em;
+    color: var(--gold-dim);
+    text-align: center;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+  .acilar-liste {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+  }
+  .aci-rozet {
+    font-size: 0.72rem;
+    color: var(--parchment-dark);
+    background: rgba(201,168,76,0.06);
+    border: 1px solid rgba(201,168,76,0.18);
+    border-radius: 12px;
+    padding: 4px 10px;
+  }
+  .aci-rozet b { color: var(--gold); font-weight: normal; }
   .natal-planet {
     font-size: 0.75rem;
     color: var(--gold-dim);
@@ -1423,7 +1508,10 @@
         <div class="karma-title" id="karmaTitle"></div>
       </div>
       <div class="natal-grid" id="natalGrid"></div>
+      <div class="acilar" id="acilar"></div>
       <div class="ebced-card" id="ebcedCard"></div>
+      <div class="imzalar" id="imzalar"></div>
+      <div class="alanlar" id="alanlar"></div>
       <div class="briefing" id="briefing"></div>
       <div class="bridges" id="bridges"></div>
       <div class="overall-section">
@@ -2096,6 +2184,31 @@ function renderKarma(data) {
   lastKarma = data;
   document.getElementById('karmaTitle').textContent = data.baslik || '';
 
+  // Haritanın belirgin imzaları
+  const im = document.getElementById('imzalar');
+  im.innerHTML = '';
+  if (data.belirgin_yerlesimler && data.belirgin_yerlesimler.length) {
+    im.innerHTML = '<div class="alan-baslik">✦ Haritanın İmzaları ✦</div>' +
+      data.belirgin_yerlesimler.map(y => `
+        <div class="imza-card">
+          <div class="imza-yer">${y.yerlesim || ''}</div>
+          <div class="imza-anlam">${y.anlami || ''}</div>
+        </div>`).join('');
+  }
+
+  // Konu konu hayat alanları
+  const al = document.getElementById('alanlar');
+  al.innerHTML = '';
+  if (data.hayat_alanlari && data.hayat_alanlari.length) {
+    al.innerHTML = '<div class="alan-baslik">✦ Konu Konu Harita ✦</div>' +
+      data.hayat_alanlari.map(a => `
+        <div class="alan-card">
+          <div class="alan-ad">${a.alan || ''}</div>
+          <div class="alan-yorum">${a.yorum || ''}</div>
+          ${a.dayanak ? `<div class="alan-dayanak">◈ ${a.dayanak}</div>` : ''}
+        </div>`).join('');
+  }
+
   // Natal grid
   const ng = document.getElementById('natalGrid');
   ng.innerHTML = '';
@@ -2103,14 +2216,36 @@ function renderKarma(data) {
     Object.entries(data.natal).forEach(([planet, v]) => {
       const cell = document.createElement('div');
       cell.className = 'natal-cell';
-      const derece = (v.derece != null) ? `<div class="natal-deg">${v.derece}°</div>` : '';
+      const derece = (v.derece != null) ? `${v.derece}°` : '';
+      const ev = v.ev ? ` · ${v.ev}. ev` : '';
+      const retro = v.retro ? ' <span class="natal-retro">℞</span>' : '';
       cell.innerHTML = `
-        <div class="natal-planet">${planet}</div>
+        <div class="natal-planet">${planet}${retro}</div>
         <div class="natal-sign">${v.burc}</div>
         <div class="natal-sign-ar">${v.burc_ar}</div>
-        ${derece}`;
+        <div class="natal-deg">${derece}${ev}</div>`;
       ng.appendChild(cell);
     });
+  }
+
+  // Açılar ve harita künyesi
+  const acEl = document.getElementById('acilar');
+  if (acEl) {
+    let html = '';
+    if (data.harita_yoneticisi || data.element_dengesi) {
+      const el = data.element_dengesi
+        ? Object.entries(data.element_dengesi).map(([k, n]) => `${k} ${n}`).join(' · ')
+        : '';
+      html += `<div class="acilar-kunye">${data.harita_yoneticisi ? 'Harita yöneticisi: <b>' + data.harita_yoneticisi + '</b>' : ''}${el ? ' &nbsp;|&nbsp; ' + el : ''}</div>`;
+    }
+    if (data.acilar && data.acilar.length) {
+      html += '<div class="acilar-baslik">Açılar</div><div class="acilar-liste">';
+      data.acilar.forEach(a => {
+        html += `<span class="aci-rozet">${a.gezegen1} <b>${a.aci}</b> ${a.gezegen2}</span>`;
+      });
+      html += '</div>';
+    }
+    acEl.innerHTML = html;
   }
 
   // Bridges
