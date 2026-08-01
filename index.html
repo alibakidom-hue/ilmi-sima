@@ -551,6 +551,140 @@
   }
 
   /* El sîması */
+  /* Profil açıları */
+  .angles { margin: -12px 0 24px; }
+  .angles-label {
+    font-size: 0.8rem;
+    color: var(--gold-dim);
+    text-align: center;
+    margin-bottom: 10px;
+    font-style: italic;
+  }
+  .angles-label span { opacity: 0.6; font-size: 0.72rem; }
+  .angles-row { display: flex; gap: 10px; }
+  .angle-slot {
+    flex: 1;
+    height: 84px;
+    border: 1px dashed rgba(201,168,76,0.3);
+    border-radius: 4px;
+    background: rgba(201,168,76,0.03);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.3s;
+  }
+  .angle-slot:hover { border-color: rgba(201,168,76,0.6); }
+  .angle-slot.filled { border-style: solid; }
+  .angle-inner { text-align: center; }
+  .angle-icon { font-size: 1.2rem; color: var(--gold); }
+  .angle-text {
+    font-size: 0.72rem;
+    color: var(--gold-dim);
+    letter-spacing: 0.08em;
+    margin-top: 3px;
+  }
+  .angle-thumb {
+    display: none;
+    position: absolute;
+    inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    filter: sepia(0.15);
+  }
+  .angle-thumb.show { display: block; }
+  .angles-hint {
+    font-size: 0.72rem;
+    color: var(--gold-dim);
+    opacity: 0.65;
+    text-align: center;
+    margin-top: 8px;
+    font-style: italic;
+  }
+
+  /* Gelecek / Yol kıraati */
+  .gelecek-result { display: none; margin-top: 8px; }
+  .gelecek-tabs {
+    display: flex;
+    gap: 5px;
+    border: 1px solid rgba(201,168,76,0.2);
+    border-radius: 4px;
+    padding: 4px;
+    margin-bottom: 16px;
+  }
+  .gelecek-tab {
+    flex: 1;
+    padding: 9px 4px;
+    background: transparent;
+    border: none;
+    color: var(--gold-dim);
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.3s;
+  }
+  .gelecek-tab.active {
+    background: linear-gradient(135deg, var(--gold-dim), var(--gold), var(--gold-dim));
+    color: var(--ink);
+  }
+  .gelecek-panel {
+    border: 1px solid rgba(201,168,76,0.15);
+    border-radius: 4px;
+    padding: 20px;
+    background: rgba(201,168,76,0.04);
+  }
+  .gelecek-baslik {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 1.1rem;
+    color: var(--gold-light);
+    text-align: center;
+    text-shadow: 0 0 20px rgba(201,168,76,0.35);
+    margin-bottom: 14px;
+    line-height: 1.35;
+  }
+  .gelecek-kiraat {
+    color: var(--parchment);
+    font-size: 1rem;
+    line-height: 1.75;
+    font-style: italic;
+    margin-bottom: 16px;
+  }
+  .gelecek-isaret {
+    font-size: 0.82rem;
+    color: var(--gold-dim);
+    border-left: 2px solid rgba(201,168,76,0.35);
+    padding-left: 10px;
+    margin-bottom: 12px;
+  }
+  .gelecek-tavsiye {
+    font-size: 0.92rem;
+    color: var(--parchment-dark);
+    font-style: italic;
+    border-top: 1px solid rgba(201,168,76,0.15);
+    padding-top: 12px;
+  }
+  .gelecek-muhur {
+    text-align: center;
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 0.95rem;
+    color: var(--gold);
+    margin-top: 18px;
+    line-height: 1.5;
+  }
+  .gelecek-not {
+    font-size: 0.72rem;
+    color: var(--gold-dim);
+    opacity: 0.6;
+    text-align: center;
+    margin-top: 14px;
+    font-style: italic;
+    line-height: 1.5;
+  }
+
   .el-result { display: none; margin-top: 8px; }
   .el-preview {
     width: 100%;
@@ -1126,8 +1260,32 @@
   <div class="upload-zone" id="uploadZone">
     <div class="upload-icon">◉</div>
     <div class="upload-text">Yüz fotoğrafı yükleyin</div>
-    <div class="upload-hint">Dokunun veya sürükleyin</div>
+    <div class="upload-hint">Ön cepheden · dokunun veya sürükleyin</div>
     <input type="file" id="fileInput" accept="image/*">
+  </div>
+
+  <!-- İsteğe bağlı profil açıları -->
+  <div class="angles" id="angles">
+    <div class="angles-label">Profil ekle — okuma derinleşir <span>(isteğe bağlı)</span></div>
+    <div class="angles-row">
+      <div class="angle-slot" id="angleSlotR">
+        <div class="angle-inner">
+          <div class="angle-icon">◐</div>
+          <div class="angle-text">Sağ profil</div>
+        </div>
+        <img class="angle-thumb" id="angleThumbR" alt="">
+        <input type="file" id="angleFileR" accept="image/*" style="display:none">
+      </div>
+      <div class="angle-slot" id="angleSlotL">
+        <div class="angle-inner">
+          <div class="angle-icon">◑</div>
+          <div class="angle-text">Sol profil</div>
+        </div>
+        <img class="angle-thumb" id="angleThumbL" alt="">
+        <input type="file" id="angleFileL" accept="image/*" style="display:none">
+      </div>
+    </div>
+    <div class="angles-hint">Burun hattı, alın eğimi ve çene ancak yandan okunur.</div>
   </div>
 
   <!-- SÎMÂ EŞLEŞMESİ modu -->
@@ -1272,6 +1430,28 @@
         <div class="overall-title">Sîmâ vü Nücûm</div>
         <div class="overall-text" id="karmaText"></div>
       </div>
+    </div>
+
+    <!-- GELECEK KIRAATİ katmanı -->
+    <div class="karma-invite" id="gelecekInvite">
+      <div class="karma-invite-title">✦ Yolunu Oku ✦</div>
+      <div class="karma-invite-text">Aşk, bereket, kariyer ve canlılık — sîmândaki hatların hangi yola meylettiğini göster.</div>
+      <button class="karma-toggle-btn" id="gelecekBtn">Yolumu Göster</button>
+    </div>
+
+    <div class="gelecek-result" id="gelecekResult">
+      <div class="karma-result-header">
+        <div class="result-label">Yol Kıraati</div>
+      </div>
+      <div class="gelecek-tabs" id="gelecekTabs">
+        <button class="gelecek-tab active" data-tema="ask">Aşk</button>
+        <button class="gelecek-tab" data-tema="bereket">Bereket</button>
+        <button class="gelecek-tab" data-tema="kariyer">Kariyer</button>
+        <button class="gelecek-tab" data-tema="canlilik">Canlılık</button>
+      </div>
+      <div class="gelecek-panel" id="gelecekPanel"></div>
+      <div class="gelecek-muhur" id="gelecekMuhur"></div>
+      <div class="gelecek-not">Bu kıraat mizacın eğilimini anlatır, kesin kehanet değildir. Canlılık bölümü tıbbi tavsiye yerine geçmez.</div>
     </div>
 
     <!-- EL SÎMASI katmanı -->
@@ -1439,6 +1619,8 @@ const errorBox   = document.getElementById('errorBox');
 const scanLine   = document.getElementById('scanLine');
 
 let imageBase64 = null;
+let angleRightB64 = null;   // sağ profil (isteğe bağlı)
+let angleLeftB64 = null;    // sol profil (isteğe bağlı)
 let imageMediaType = 'image/jpeg';
 let lastReading = null;   // paylaşım kartı için son okuma
 let lastKarma = null;     // son karma (ebced/mühür için)
@@ -1673,6 +1855,47 @@ function drawDecorativeLandmarks() {
 
 analyzeBtn.addEventListener('click', analyze);
 
+// ---- Profil açıları (isteğe bağlı) ----
+function facePayload(extra) {
+  const p = { image: imageBase64, mediaType: imageMediaType };
+  if (angleRightB64) { p.imageRight = angleRightB64; p.mediaTypeRight = 'image/jpeg'; }
+  if (angleLeftB64)  { p.imageLeft  = angleLeftB64;  p.mediaTypeLeft  = 'image/jpeg'; }
+  return Object.assign(p, extra || {});
+}
+
+function setupAngle(slotId, fileId, thumbId, side) {
+  const slot = document.getElementById(slotId);
+  const input = document.getElementById(fileId);
+  slot.addEventListener('click', () => input.click());
+  input.addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const tmp = new Image();
+      tmp.onload = () => {
+        const maxDim = 1024;
+        let w = tmp.width, h = tmp.height;
+        if (w > h && w > maxDim) { h = h * maxDim / w; w = maxDim; }
+        else if (h > maxDim) { w = w * maxDim / h; h = maxDim; }
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        c.getContext('2d').drawImage(tmp, 0, 0, w, h);
+        const jpeg = c.toDataURL('image/jpeg', 0.85);
+        if (side === 'R') angleRightB64 = jpeg.split(',')[1];
+        else angleLeftB64 = jpeg.split(',')[1];
+        const thumb = document.getElementById(thumbId);
+        thumb.src = jpeg; thumb.classList.add('show');
+        slot.classList.add('filled');
+      };
+      tmp.src = ev.target.result;
+    };
+    reader.readAsDataURL(f);
+  });
+}
+setupAngle('angleSlotR', 'angleFileR', 'angleThumbR', 'R');
+setupAngle('angleSlotL', 'angleFileL', 'angleThumbL', 'L');
+
 async function analyze() {
   if (!imageBase64) return;
   analyzeBtn.disabled = true;
@@ -1690,7 +1913,7 @@ async function analyze() {
     const res = await fetch('/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: imageBase64, mediaType: imageMediaType })
+      body: JSON.stringify(facePayload())
     });
 
     const raw = await res.text();
@@ -1774,6 +1997,17 @@ function showError(msg) {
 
 document.getElementById('resetBtn').addEventListener('click', () => {
   imageBase64 = null;
+  // Profil açılarını sıfırla
+  angleRightB64 = null; angleLeftB64 = null;
+  ['angleThumbR','angleThumbL'].forEach(id => {
+    const t = document.getElementById(id); t.src = ''; t.classList.remove('show');
+  });
+  ['angleSlotR','angleSlotL'].forEach(id => document.getElementById(id).classList.remove('filled'));
+  ['angleFileR','angleFileL'].forEach(id => document.getElementById(id).value = '');
+  // Yol kıraatini sıfırla
+  lastGelecek = null;
+  document.getElementById('gelecekInvite').style.display = 'block';
+  document.getElementById('gelecekResult').style.display = 'none';
   previewContainer.style.display = 'none';
   analyzeBtn.style.display = 'none';
   resultsEl.style.display = 'none';
@@ -1833,12 +2067,10 @@ karmaSubmitBtn.addEventListener('click', async () => {
     const res = await fetch('/karma', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        image: imageBase64,
-        mediaType: imageMediaType,
+      body: JSON.stringify(facePayload({
         birth: { year, month, day, hour, city: cityVal },
         name: nameVal
-      })
+      }))
     });
 
     const raw = await res.text();
@@ -2109,6 +2341,83 @@ function downloadBlob(blob) {
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
+// ---- GELECEK / YOL KIRAATİ ----
+let lastGelecek = null;
+const TEMA_ADI = { ask: 'Aşk', bereket: 'Bereket', kariyer: 'Kariyer', canlilik: 'Canlılık' };
+
+document.getElementById('gelecekBtn').addEventListener('click', async () => {
+  if (!imageBase64) return;
+  const btn = document.getElementById('gelecekBtn');
+  btn.disabled = true;
+  document.getElementById('gelecekInvite').style.display = 'none';
+  loadingEl.querySelector('.loading-text').textContent = 'Yolun kıraati yazılıyor...';
+  loadingEl.style.display = 'block';
+  errorBox.style.display = 'none';
+  Sound.scanStart();
+
+  // Doğum bilgisi varsa harmanla (karma formundan ya da günlük kayıttan)
+  const extra = {};
+  const d = parseInt(document.getElementById('bDay').value);
+  const m = parseInt(document.getElementById('bMonth').value);
+  const y = parseInt(document.getElementById('bYear').value);
+  if (d && m && y) {
+    const t = document.getElementById('bTime').value;
+    let hour = 12.0;
+    if (t) { const [hh, mm] = t.split(':').map(Number); hour = hh + (mm || 0) / 60; }
+    extra.birth = { year: y, month: m, day: d, hour, city: document.getElementById('bCity').value.trim() };
+  } else {
+    const saved = getBirth();
+    if (saved) extra.birth = saved;
+  }
+
+  try {
+    const res = await fetch('/gelecek', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(facePayload(extra))
+    });
+    const raw = await res.text();
+    let data;
+    try { data = JSON.parse(raw); }
+    catch (e) {
+      if (res.status === 502 || res.status === 504)
+        throw new Error('Sunucu cevap veremedi (zaman aşımı). Birkaç saniye sonra dene.');
+      throw new Error('Sunucudan beklenmeyen cevap (durum ' + res.status + ').');
+    }
+    if (data.error) throw new Error(data.error);
+    lastGelecek = data;
+    Sound.reveal();
+    renderGelecek('ask');
+    document.getElementById('gelecekResult').style.display = 'block';
+    document.getElementById('gelecekMuhur').textContent = data['mühür'] ? ('❝ ' + data['mühür'] + ' ❞') : '';
+    document.getElementById('gelecekResult').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (err) {
+    showError('Hata: ' + err.message);
+    document.getElementById('gelecekInvite').style.display = 'block';
+    console.error(err);
+  } finally {
+    loadingEl.style.display = 'none';
+    btn.disabled = false;
+  }
+});
+
+function renderGelecek(tema) {
+  if (!lastGelecek || !lastGelecek[tema]) return;
+  const t = lastGelecek[tema];
+  document.getElementById('gelecekPanel').innerHTML = `
+    <div class="gelecek-baslik">${t.baslik || TEMA_ADI[tema]}</div>
+    <div class="gelecek-kiraat">${t.kiraat || ''}</div>
+    ${t.isaret ? `<div class="gelecek-isaret">◈ ${t.isaret}</div>` : ''}
+    ${t.tavsiye ? `<div class="gelecek-tavsiye">☽ ${t.tavsiye}</div>` : ''}`;
+  document.querySelectorAll('.gelecek-tab').forEach(b => {
+    b.classList.toggle('active', b.dataset.tema === tema);
+  });
+}
+
+document.querySelectorAll('.gelecek-tab').forEach(b => {
+  b.addEventListener('click', () => renderGelecek(b.dataset.tema));
+});
+
 // ---- EL SÎMASI ----
 const elToggleBtn = document.getElementById('elToggleBtn');
 const elFileInput = document.getElementById('elFileInput');
@@ -2198,7 +2507,7 @@ const matchMode = document.getElementById('matchMode');
 let matchImg1 = null, matchImg2 = null;
 
 // Solo modda gizlenecek/gösterilecek bölümler
-const soloEls = ['uploadZone', 'previewContainer', 'results'];
+const soloEls = ['uploadZone', 'angles', 'previewContainer', 'results'];
 
 function setMode(match) {
   if (match) {
@@ -2210,6 +2519,7 @@ function setMode(match) {
     tabSolo.classList.add('active'); tabMatch.classList.remove('active');
     matchMode.style.display = 'none';
     document.getElementById('uploadZone').style.display = 'block';
+    document.getElementById('angles').style.display = 'block';
   }
 }
 tabSolo.addEventListener('click', () => setMode(false));
