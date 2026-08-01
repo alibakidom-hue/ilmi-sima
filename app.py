@@ -39,8 +39,66 @@ if ASTRO_OK:
     PLANETS_TR = {
         "Güneş": swe.SUN, "Ay": swe.MOON, "Merkür": swe.MERCURY,
         "Venüs": swe.VENUS, "Mars": swe.MARS, "Jüpiter": swe.JUPITER,
-        "Satürn": swe.SATURN,
+        "Satürn": swe.SATURN, "Uranüs": swe.URANUS, "Neptün": swe.NEPTUNE,
+        "Plüton": swe.PLUTO, "Kuzey Ay Düğümü": swe.TRUE_NODE,
     }
+
+# Burç nitelikleri (element / nitelik) ve yöneticileri
+ELEMENTS = ["Ateş", "Toprak", "Hava", "Su"] * 3
+QUALITIES = ["Öncü", "Sabit", "Değişken"] * 4
+SIGN_RULERS = ["Mars", "Venüs", "Merkür", "Ay", "Güneş", "Merkür",
+               "Venüs", "Plüton", "Jüpiter", "Satürn", "Uranüs", "Neptün"]
+
+# Ev anlamları — konu bazlı yorum için
+HOUSE_MEANINGS = {
+    1: "benlik, görünüş, ilk izlenim", 2: "para, kazanç, öz değer",
+    3: "iletişim, kardeşler, yakın çevre", 4: "yuva, kök, aile",
+    5: "aşk, haz, yaratıcılık, çocuk", 6: "gündelik düzen, iş rutini, hizmet",
+    7: "ortaklık, evlilik, birebir ilişkiler", 8: "dönüşüm, ortak kaynaklar, derinlik",
+    9: "inanç, uzak yolculuk, öğreti", 10: "kariyer, itibar, toplumdaki yer",
+    11: "dostluk, topluluk, hedefler", 12: "içsel dünya, geri çekilme, gizli olan",
+}
+
+# Ana açılar: (derece, ad, orb)
+ASPECTS = [
+    (0, "Kavuşum", 8), (60, "Altmışlık", 4), (90, "Kare", 6),
+    (120, "Üçgen", 6), (180, "Karşıt", 8),
+]
+
+
+def _house_of(lon, cusps):
+    """Bir gezegenin hangi evde olduğunu bulur (360° dönüşünü de hesaba katar)."""
+    for i in range(12):
+        a, b = cusps[i], cusps[(i + 1) % 12]
+        if a < b:
+            if a <= lon < b:
+                return i + 1
+        else:  # 360°'yi geçen ev
+            if lon >= a or lon < b:
+                return i + 1
+    return None
+
+
+def _aspects_between(positions):
+    """Gezegenler arası ana açıları bulur. positions: {ad: boylam}"""
+    names = list(positions.keys())
+    found = []
+    for i in range(len(names)):
+        for j in range(i + 1, len(names)):
+            p1, p2 = names[i], names[j]
+            if "Düğümü" in p1 or "Düğümü" in p2:
+                continue
+            diff = abs(positions[p1] - positions[p2]) % 360
+            if diff > 180:
+                diff = 360 - diff
+            for angle, ad, orb in ASPECTS:
+                if abs(diff - angle) <= orb:
+                    found.append({
+                        "gezegen1": p1, "gezegen2": p2, "aci": ad,
+                        "sapma": round(abs(diff - angle), 1),
+                    })
+                    break
+    return found
 
 
 def _sign_of(lon):
@@ -112,10 +170,18 @@ def compute_natal(year, month, day, hour=12.0, city=None):
     flag = swe.FLG_MOSEPH | swe.FLG_SPEED
 
     result = {"gezegenler": {}}
+    raw_lon = {}
     for name, pid in PLANETS_TR.items():
         res, _ = swe.calc_ut(jd, pid, flag)
-        tr, ar, deg = _sign_of(res[0])
-        result["gezegenler"][name] = {"burc": tr, "burc_ar": ar, "derece": deg}
+        lon_p, speed = res[0], res[3]
+        tr, ar, deg = _sign_of(lon_p)
+        idx = int(lon_p // 30) % 12
+        raw_lon[name] = lon_p
+        result["gezegenler"][name] = {
+            "burc": tr, "burc_ar": ar, "derece": deg,
+            "element": ELEMENTS[idx], "nitelik": QUALITIES[idx],
+            "retro": bool(speed < 0),
+        }
 
     # Yükselen + evler (Placidus). Koordinat gerekir.
     lat, lon = DEFAULT_COORD
@@ -125,39 +191,113 @@ def compute_natal(year, month, day, hour=12.0, city=None):
             lat, lon = TR_CITIES[key]
     try:
         cusps, ascmc = swe.houses(jd, lat, lon, b"P")  # Placidus
-        asc = ascmc[0]   # yükselen
-        mc = ascmc[1]    # tepe noktası (MC)
+        asc, mc = ascmc[0], ascmc[1]
         atr, aar, adeg = _sign_of(asc)
         mtr, mar, mdeg = _sign_of(mc)
         result["yukselen"] = {"burc": atr, "burc_ar": aar, "derece": adeg}
         result["mc"] = {"burc": mtr, "burc_ar": mar, "derece": mdeg}
-        houses = []
-        for i in range(12):
-            htr, har, hdeg = _sign_of(cusps[i])
-            houses.append({"ev": i + 1, "burc": htr, "burc_ar": har, "derece": hdeg})
-        result["evler"] = houses
+        result["evler"] = [
+            dict(zip(("ev", "burc", "burc_ar", "derece"),
+                     (i + 1,) + _sign_of(cusps[i])))
+            for i in range(12)
+        ]
+        # ÖNEMLİ: her gezegenin hangi evde olduğu — konu bazlı yorumun temeli
+        for name, lon_p in raw_lon.items():
+            h = _house_of(lon_p, cusps)
+            if h:
+                result["gezegenler"][name]["ev"] = h
+        # Harita yöneticisi (yükselen burcunun yöneticisi)
+        result["harita_yoneticisi"] = SIGN_RULERS[int(asc // 30) % 12]
     except Exception:
-        # Ev hesabı başarısızsa gezegenlerle yetin
-        pass
+        pass  # Ev hesabı başarısızsa gezegenlerle yetin
+
+    # Gezegenler arası açılar
+    result["acilar"] = _aspects_between(raw_lon)
+
+    # Element ve nitelik dengesi (Ay Düğümü hariç)
+    el_count, ni_count = {}, {}
+    for name, v in result["gezegenler"].items():
+        if "Düğümü" in name:
+            continue
+        el_count[v["element"]] = el_count.get(v["element"], 0) + 1
+        ni_count[v["nitelik"]] = ni_count.get(v["nitelik"], 0) + 1
+    result["element_dengesi"] = el_count
+    result["nitelik_dengesi"] = ni_count
 
     return result
 
 
 def natal_to_text(natal, detailed=True):
-    """Haritayı LLM'e verilecek okunabilir metne çevirir (yeni yapı uyumlu)."""
+    """Haritayı LLM'e verilecek AYRINTILI metne çevirir."""
     if not natal:
         return ""
-    gez = natal.get("gezegenler", {})
-    lines = [f"- {p}: {v['burc']} burcu ({v['derece']}°)" for p, v in gez.items()]
+    lines = []
+    for p, v in natal.get("gezegenler", {}).items():
+        s = f"- {p}: {v['burc']} {v['derece']}°"
+        if v.get("ev"):
+            s += f", {v['ev']}. evde ({HOUSE_MEANINGS.get(v['ev'], '')})"
+        if v.get("retro"):
+            s += " [RETRO]"
+        lines.append(s)
     if natal.get("yukselen"):
         y = natal["yukselen"]
-        lines.append(f"- Yükselen (ASC): {y['burc']} ({y['derece']}°)")
+        lines.append(f"- Yükselen (ASC): {y['burc']} {y['derece']}°")
     if natal.get("mc"):
         m = natal["mc"]
-        lines.append(f"- Tepe Noktası (MC): {m['burc']} ({m['derece']}°)")
+        lines.append(f"- Tepe Noktası (MC): {m['burc']} {m['derece']}° — kariyer ekseni")
+    if natal.get("harita_yoneticisi"):
+        lines.append(f"- Harita yöneticisi: {natal['harita_yoneticisi']}")
+    if natal.get("element_dengesi"):
+        el = ", ".join(f"{k}: {v}" for k, v in natal["element_dengesi"].items())
+        lines.append(f"- Element dengesi: {el}")
+    if natal.get("nitelik_dengesi"):
+        ni = ", ".join(f"{k}: {v}" for k, v in natal["nitelik_dengesi"].items())
+        lines.append(f"- Nitelik dengesi: {ni}")
+    if detailed and natal.get("acilar"):
+        ac = "; ".join(
+            f"{a['gezegen1']} {a['aci']} {a['gezegen2']} ({a['sapma']}° sapma)"
+            for a in natal["acilar"]
+        )
+        lines.append(f"- AÇILAR: {ac}")
     if detailed and natal.get("evler"):
-        ev_ozet = ", ".join(f"{h['ev']}.ev {h['burc']}" for h in natal["evler"])
-        lines.append(f"- Evler: {ev_ozet}")
+        ev = ", ".join(f"{h['ev']}.ev {h['burc']}" for h in natal["evler"])
+        lines.append(f"- Ev başlangıçları: {ev}")
+    return "\n".join(lines)
+
+
+def natal_for_topic(natal, houses, planets):
+    """Belirli bir konu için haritanın ilgili kısmını çıkarır (aşk, para, kariyer...)."""
+    if not natal:
+        return ""
+    lines = []
+    gez = natal.get("gezegenler", {})
+    # İlgili evlerde hangi gezegenler var
+    for h in houses:
+        icinde = [p for p, v in gez.items() if v.get("ev") == h]
+        cusp = next((e for e in natal.get("evler", []) if e["ev"] == h), None)
+        s = f"- {h}. ev ({HOUSE_MEANINGS.get(h, '')})"
+        if cusp:
+            s += f": {cusp['burc']} burcunda"
+        s += f" — içindeki gezegenler: {', '.join(icinde) if icinde else 'boş'}"
+        lines.append(s)
+    # İlgili gezegenlerin durumu
+    for p in planets:
+        v = gez.get(p)
+        if not v:
+            continue
+        s = f"- {p}: {v['burc']} {v['derece']}°"
+        if v.get("ev"):
+            s += f", {v['ev']}. evde"
+        if v.get("retro"):
+            s += " [RETRO]"
+        ilgili = [a for a in natal.get("acilar", [])
+                  if a["gezegen1"] == p or a["gezegen2"] == p]
+        if ilgili:
+            s += " | açıları: " + ", ".join(
+                f"{a['aci']} {a['gezegen2'] if a['gezegen1'] == p else a['gezegen1']}"
+                for a in ilgili
+            )
+        lines.append(s)
     return "\n".join(lines)
 
 
@@ -311,10 +451,20 @@ Her trait'in 'name' alanı yukarıdaki Türkçe adı, 'arabic' alanı yanındaki
 
 ÖNEMLİ:
 - Yorumlar gerçekten gördüğün yüz hatlarına dayansın, genel geçer olmasın.
+- YÜZEYSELLİK YASAK. Her özellikte önce GÖRDÜĞÜN ŞEYİ tarif et (örn. 'alın geniş ve hafif \
+çıkık, saç çizgisi köşeli'), SONRA onu yorumla. Tarif etmeden yorum yapma — okuyan kişi \
+'bunu benim yüzümden mi çıkardı, herkese mi söylüyor' diye ayırt edebilmeli.
+- 'Zeki birisin', 'duygusalsın', 'kararlısın' gibi herkese uyan cümleler kurma. Bunun yerine \
+ayrımı keskin şeyler yaz: hangi durumda ne yapar, neyi erteler, hangi baskı altında çatlar, \
+neyle kolay ikna olur, neyi asla affetmez.
+- Her özellik 4-6 cümle olsun; tek cümlelik geçiştirme yok.
+- Klasik firâsetin MİZAÇ çerçevesini kullan (safravî/ateşli, demevî/kanlı, sevdavî/toprak, \
+balgamî/sulu) ve bu kişinin hangi mizaca meylettiğini 'overall' bölümünde bağla.
+- Özellikler arası BAĞ kur: bir hattın söylediğini başka bir hat destekliyor mu, yoksa \
+çelişiyor mu? Çelişki varsa onu söyle — asıl derinlik oradadır.
 - DENGELİ ol: her özellikte hem güçlü yönü hem de zaafı/gölge tarafı belirt. İlm-i sîmâ \
 salt övgü değildir; bir hattın hem meziyetini hem de dizginlenmezse nereye kayabileceğini söyler. \
-Mesela "kararlılık gösterir, ama bu inat ve esneksizliğe dönüşebilir" gibi. En az iki özellikte \
-gerçek bir zaaf/gerilim/uyarı bulunsun. Yağcılık yapma, dürüst ama yapıcı ol.
+En az iki özellikte gerçek bir zaaf/gerilim/uyarı bulunsun. Yağcılık yapma, dürüst ama yapıcı ol.
 - Bu eğlence ve kültürel bir uygulamadır; tıbbi/kesin iddialarda bulunma, klasik üslupta yorumla. \
 Kişiyi yıkmadan, ama gerçekçi şekilde gölge yönleri de göster.
 - Yorumunu yalnızca istenen JSON yapısında ver, başka açıklama ekleme."""
@@ -371,7 +521,7 @@ def analyze():
             return jsonify({"error": "Görsel bulunamadı"}), 400
 
         prompt = SIMA_PROMPT + (MULTI_ANGLE_NOTE if n_angles > 1 else "")
-        result = gemini_json(parts + [prompt], SIMA_TOOL["input_schema"], 2600)
+        result = gemini_json(parts + [prompt], SIMA_TOOL["input_schema"], 4000)
 
         if result is None:
             return jsonify({"error": "Model analiz üretmedi, tekrar dene."}), 502
@@ -410,16 +560,41 @@ KARMA_TOOL = {
             },
             "kiraat": {
                 "type": "string",
-                "description": "Bütünsel karma kıraati, 5-6 cümle, klasik Osmanlı üslubu ama anlaşılır",
+                "description": "Bütünsel karma kıraati, 8-10 cümle, klasik Osmanlı üslubu ama anlaşılır. Yüzle haritayı iç içe geçir; genel geçer değil, bu haritaya özgü yaz.",
+            },
+            "belirgin_yerlesimler": {
+                "type": "array",
+                "description": "Bu haritanın EN ÇARPICI 3-4 imzası (harita yöneticisi, en dar açı, bir evde yığılma, baskın/eksik element, retro gezegen gibi). Sıradan olanı değil, bu haritayı DİĞERLERİNDEN AYIRANI seç.",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "yerlesim": {"type": "string", "description": "Teknik yerleşim (örn: 'Ay 12. evde, Satürn ile kare')"},
+                        "anlami": {"type": "string", "description": "Bu yerleşimin bu kişide somut olarak neye dönüştüğü, 2-3 cümle"},
+                    },
+                    "required": ["yerlesim", "anlami"],
+                },
+            },
+            "hayat_alanlari": {
+                "type": "array",
+                "description": "Haritanın konu konu okunuşu. ŞU ALTI ALANIN HER BİRİ İÇİN birer madde yaz: Aşk ve İlişkiler (5/7. ev, Venüs, Ay), İş ve Kariyer (6/10. ev, MC, Satürn), Para ve Bereket (2/8. ev, Jüpiter, Venüs), Aile ve Kökler (4. ev, Ay, IC), Zihin ve Öğrenme (3/9. ev, Merkür), İç Dünya ve Gölge (12. ev, Plüton, Neptün).",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "alan": {"type": "string", "description": "Alan adı (yukarıdaki altıdan biri)"},
+                        "yorum": {"type": "string", "description": "Bu alandaki eğilim, 3-4 cümle. Hem imkânı hem zorluğu söyle."},
+                        "dayanak": {"type": "string", "description": "Bu yorumu dayandırdığın SOMUT yerleşim (örn: 'Venüs 8. evde, Plüton ile kavuşum')"},
+                    },
+                    "required": ["alan", "yorum", "dayanak"],
+                },
             },
             "guclu_yanlar": {
                 "type": "array",
-                "description": "Bu kişinin 3-4 güçlü/parlak yanı, kısa maddeler",
+                "description": "3-4 güçlü/parlak yan. Her maddede parantez içinde dayanağını yaz (örn: 'Baskı altında soğukkanlı kalır (Satürn 1. evde)').",
                 "items": {"type": "string"},
             },
             "golge_yanlar": {
                 "type": "array",
-                "description": "Bu kişinin 3-4 zaafı/gölge yanı, dürüst ama kırıcı olmayan kısa maddeler",
+                "description": "3-4 zaaf/gölge yan, dürüst ama kırıcı değil. Her maddede parantez içinde dayanağını yaz (örn: 'Yakınlıkta kontrolü bırakmakta zorlanır (Ay-Plüton karesi)').",
                 "items": {"type": "string"},
             },
             "dikkat_edilecekler": {
@@ -432,7 +607,8 @@ KARMA_TOOL = {
                 "description": "İsim verildiyse, ebced sayısının kısa yorumu (2-3 cümle). İsim yoksa boş bırak.",
             },
         },
-        "required": ["baslik", "kopruler", "kiraat", "guclu_yanlar", "golge_yanlar", "dikkat_edilecekler"],
+        "required": ["baslik", "kopruler", "kiraat", "belirgin_yerlesimler",
+                     "hayat_alanlari", "guclu_yanlar", "golge_yanlar", "dikkat_edilecekler"],
     },
 }
 
@@ -478,29 +654,44 @@ def karma():
             )
 
         karma_prompt = f"""Sen hem İlm-i Sîmâ (yüz okuma), hem İlm-i Nücûm (doğum haritası), \
-hem de İlm-i Ebced (isim sayısı) geleneğine hâkim bir Osmanlı müneccim-feraset üstadısın.
+hem de İlm-i Ebced (isim sayısı) geleneğine hâkim bir Osmanlı müneccim-feraset üstadısın. \
+Sıradan bir burç yorumcusu değilsin; haritayı teknik olarak okuyup insan diline çeviren bir ustasın.
 
-Bu kişinin YÜZÜNÜ fotoğraftan gerçekten incele. Aşağıda da doğum haritasındaki \
-gezegen yerleşimleri var:
+Bu kişinin YÜZÜNÜ fotoğraftan gerçekten incele. Aşağıda da doğum haritasının AYRINTILI dökümü var \
+(gezegenlerin burçları, dereceleri, EVLERİ, açıları, element/nitelik dengesi, harita yöneticisi):
 
 {natal_text}
 {time_note}{ebced_text}
 
-Görevin: Yüzden okuduğun mizaç ile haritadaki gezegen yerleşimlerini (ve verilmişse isim \
-ebcedini) TEK bir bütünsel kıraatte harmanlamak. Yüzdeki bir özelliğin haritadaki bir \
-yerleşimle nasıl örtüştüğünü (veya gerilim oluşturduğunu) göster. DENGELİ ol: sadece güçlü \
-yönleri değil, zaafları, iç çelişkileri ve gerilimleri de dürüstçe yaz. Yağcılık yapma; \
-klasik müneccim üslubunda hem meziyeti hem gölgeyi söyle. Bu bir eğlence ve kültürel \
-uygulamadır; kişiyi yıkmadan ama gerçekçi yaz.
+Görevin: Yüzden okuduğun mizaç ile haritadaki yerleşimleri (ve verilmişse isim ebcedini) \
+harmanlayıp KONU KONU derinlemesine bir kıraat yazmak.
 
-Ayrıca brifing alanlarını da doldur: 'guclu_yanlar' (parlak yanlar), 'golge_yanlar' (zaaflar, \
-dürüst ama kırıcı olmadan), ve 'dikkat_edilecekler' (bu mizaçla daha iyi anlaşmak için yapıcı \
-tavsiyeler — 'şu kişiden sakın' gibi yargı değil). Yalnızca istenen JSON yapısında cevap ver."""
+DERİNLİK KURALLARI — bunlara uymazsan iş yüzeysel kalır:
+- Her yorumu SOMUT bir yerleşime dayandır: hangi gezegen, hangi burç, KAÇINCI EV, hangi açı. \
+'dayanak' alanlarını gerçekten doldur. Dayanağı olmayan cümle kurma.
+- EVLER en önemli katmandır. Burçlar 'nasıl'ı, evler 'nerede/hangi konuda'yı söyler. \
+Konu bazlı yorumu ev yerleşimlerinden çıkar; sadece güneş burcuyla konuşma.
+- AÇILARI kullan: kavuşum/kare/karşıt gerilim ve yoğunluk üretir, üçgen/altmış akış üretir. \
+En dar sapmalı açılar en baskın olanlardır — onları öne çıkar.
+- 'Duygusalsın', 'zeki birisin', 'hem güçlü hem hassassın' gibi HERKESE UYAN cümleler yasak. \
+Bunun yerine ayrımı keskin şeyler yaz: hangi durumda ne yapar, neyi erteler, hangi baskı altında \
+çatlar, hangi ilişki türünde tıkanır, parayı neye harcar, hangi işte söner.
+- ÇELİŞKİLERİ göster: haritada birbirine ters düşen yerleşimler varsa (örn. Yükselen atak ama Ay \
+çekingen) bunu söyle. Asıl derinlik çelişkidedir. Aynısını yüz ile harita arasında da yap.
+- Boş evleri sorun sayma; o evin başlangıç burcunun yöneticisine bak.
+
+DENGE: sadece güçlü yönleri değil, zaafları, iç çelişkileri ve gerilimleri de dürüstçe yaz. \
+Yağcılık yapma; klasik müneccim üslubunda hem meziyeti hem gölgeyi söyle. Kişiyi yıkmadan ama \
+gerçekçi yaz. Bu bir eğlence ve kültürel uygulamadır; kesin kehanet ('şu tarihte şu olacak') \
+ve tıbbi iddia yok — eğilim dilini kullan.
+
+'dikkat_edilecekler' alanı: bu mizaçla daha iyi anlaşmak için yapıcı notlar — 'şu kişiden sakın' \
+gibi yargı DEĞİL. Yalnızca istenen JSON yapısında cevap ver."""
 
         result = gemini_json(
             karma_parts + [karma_prompt + (MULTI_ANGLE_NOTE if karma_angles > 1 else "")],
             KARMA_TOOL["input_schema"],
-            2000,
+            7000,
         )
 
         if result is None:
@@ -516,6 +707,12 @@ tavsiyeler — 'şu kişiden sakın' gibi yargı değil). Yalnızca istenen JSON
             result["evler"] = natal["evler"]
         if natal.get("mc"):
             result["mc"] = natal["mc"]
+        if natal.get("acilar"):
+            result["acilar"] = natal["acilar"]
+        if natal.get("element_dengesi"):
+            result["element_dengesi"] = natal["element_dengesi"]
+        if natal.get("harita_yoneticisi"):
+            result["harita_yoneticisi"] = natal["harita_yoneticisi"]
         if ebced:
             result["ebced"] = ebced
         return jsonify(result)
@@ -772,19 +969,19 @@ GELECEK_TOOL = {
         "properties": {
             "ask": _tema_schema(
                 "Aşk ve gönül yolu: bağlanma biçimi, ilişkide güçlü yanı ve düştüğü tuzak. "
-                "4-5 cümle, klasik ama sıcak üslup."
+                "6-8 cümle, klasik ama sıcak üslup. Somut ve kişiye özgü olsun."
             ),
             "bereket": _tema_schema(
                 "Bereket ve rızık: para ile ilişkisi, kazanma ve harcama eğilimi, bolluk yolu. "
-                "4-5 cümle."
+                "6-8 cümle, somut ve kişiye özgü."
             ),
             "kariyer": _tema_schema(
-                "Kariyer ve sanat: hangi işte parlar, hangi ortamda söner, ustalık yolu. 4-5 cümle."
+                "Kariyer ve sanat: hangi işte parlar, hangi ortamda söner, ustalık yolu, hangi bedeli öder. 6-8 cümle, somut."
             ),
             "canlilik": _tema_schema(
                 "Canlılık ve mizaç dengesi: enerji temposu, dinlenme ihtiyacı, kendini yıprattığı "
                 "alışkanlık. SADECE yaşam temposu ve mizaç; hastalık, teşhis, organ veya tıbbi "
-                "durumdan ASLA söz etme. 4-5 cümle."
+                "durumdan ASLA söz etme. 6-8 cümle, somut."
             ),
             "mühür": {
                 "type": "string",
@@ -800,8 +997,15 @@ Gönderilen yüzü gerçekten dikkatle incele ve bu kişinin YOLU üzerine dört
 Aşk, Bereket (rızık), Kariyer, Canlılık.
 
 ÜSLUP VE ÇERÇEVE:
-- Her okumayı gördüğün SOMUT bir yüz hattına dayandır ('isaret' alanında onu söyle). \
-Genel geçer fal cümleleri yazma.
+- Her okumayı gördüğün SOMUT bir yüz hattına ve (verilmişse) haritadaki SOMUT bir yerleşime \
+dayandır ('isaret' alanında ikisini de söyle). Genel geçer fal cümleleri yazma.
+- YÜZEYSELLİK YASAK. Şu tür cümleler kurma: 'duygusal bir yapın var', 'sevgiyi önemsersin', \
+'çalışkansın'. Bunlar herkese uyar, hiçbir şey söylemez. Bunun yerine kişiye özgü, ayrımı \
+keskin şeyler yaz: hangi tip insana çekilir, hangi anda geri çekilir, hangi hatayı tekrar eder, \
+neyi geciktirir, hangi ortamda parlar, hangi bedeli öder.
+- Harita verildiyse: gezegenin burcunu SÖYLEMEKLE YETİNME; hangi EVDE olduğunu ve AÇILARINI \
+yorumun içine ör. Örneğin 'Venüs 7. evde ama Satürn kare' — bu bağlanma isteği ile mesafe \
+ihtiyacının çatışması demektir; işte bu düzeyde konuş.
 - Bunlar kesin kehanet değil, MİZACIN EĞİLİMİ'dir. 'Şu tarihte şu olacak' deme; \
 'bu mizaç şuna meyleder, önünü açmak için şunu yapar' dilini kullan.
 - DENGELİ ol: her başlıkta hem parlak yanı hem düşülen tuzağı söyle. Yağcılık yapma.
@@ -834,10 +1038,26 @@ def gelecek():
         except (TypeError, ValueError, KeyError):
             natal = None
         if natal:
-            prompt += ("\n\nBu kişinin doğum haritası: " + natal_short(natal) +
-                       "\nYüzden okuduklarınla haritayı harmanla.")
+            TEMA_HARITA = {
+                "AŞK": ([5, 7], ["Venüs", "Ay", "Mars"]),
+                "BEREKET": ([2, 8], ["Venüs", "Jüpiter", "Satürn"]),
+                "KARİYER": ([10, 6], ["Satürn", "Güneş", "Mars", "Jüpiter"]),
+                "CANLILIK": ([1, 6], ["Mars", "Güneş", "Ay"]),
+            }
+            blok = ["\n\n=== DOĞUM HARİTASI (AYRINTILI) ===", natal_to_text(natal)]
+            for tema, (evler, gezegenler) in TEMA_HARITA.items():
+                blok.append(f"\n--- {tema} BAŞLIĞI İÇİN İLGİLİ YERLEŞİMLER ---")
+                blok.append(natal_for_topic(natal, evler, gezegenler))
+            blok.append(
+                "\nHER BAŞLIKTA yukarıdaki İLGİLİ YERLEŞİMLERİ kullan: gezegenin hangi "
+                "burçta, KAÇINCI EVDE olduğunu ve açılarını somut olarak yorumla. "
+                "'isaret' alanında hem yüz hattını hem de dayandığın yerleşimi belirt "
+                "(örn: 'kaşların kavisi · Venüs 7. evde, Satürn kare'). "
+                "Sadece burç adı söyleyip geçme — ev ve açı olmadan yorum yüzeysel kalır."
+            )
+            prompt += "\n".join(blok)
 
-        result = gemini_json(parts + [prompt], GELECEK_TOOL["input_schema"], 2600)
+        result = gemini_json(parts + [prompt], GELECEK_TOOL["input_schema"], 5000)
         if result is None:
             return jsonify({"error": "Kıraat üretilemedi, tekrar dene."}), 502
         return jsonify(result)
