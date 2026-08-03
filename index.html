@@ -738,6 +738,43 @@
     font-style: italic;
   }
 
+  /* Üstad sîması — karşılayıcı yüz */
+  .ustad {
+    text-align: center;
+    margin: -6px 0 26px;
+  }
+  .ustad-face {
+    width: 168px;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+    overflow: visible;
+    filter: drop-shadow(0 0 22px rgba(201,168,76,0.12));
+  }
+  .ustad-say {
+    min-height: 46px;
+    margin: 12px 14px 0;
+    color: var(--parchment);
+    font-size: 0.95rem;
+    font-style: italic;
+    line-height: 1.6;
+  }
+  .ustad-caret { color: var(--gold); }
+  .ustad-speak {
+    margin-top: 8px;
+    background: transparent;
+    border: 1px solid rgba(201,168,76,0.4);
+    color: var(--gold);
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 0.62rem;
+    letter-spacing: 0.14em;
+    padding: 8px 18px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .ustad-speak:hover { background: rgba(201,168,76,0.1); }
+
   .el-result { display: none; margin-top: 8px; }
   .el-preview {
     width: 100%;
@@ -1305,6 +1342,40 @@
     <div class="subtitle">Yüz hatlarından karakter ve mizaç analizi</div>
   </div>
 
+  <!-- ÜSTAD SÎMASI — karşılayıcı yüz -->
+  <div class="ustad" id="ustad">
+    <svg class="ustad-face" id="ustadFace" viewBox="0 0 240 220" aria-label="İlm-i Sîmâ üstadı">
+      <g id="ustadSway">
+        <ellipse cx="120" cy="118" rx="58" ry="70" fill="none" stroke="#C9A84C" stroke-width="1.5" opacity="0.7"/>
+        <path d="M62 90 q58 -44 116 0 q-8 -50 -58 -50 q-50 0 -58 50 z" fill="#1a1409" stroke="#C9A84C" stroke-width="1.5"/>
+        <path d="M76 48 q44 -20 88 0" fill="none" stroke="#8B6914" stroke-width="1"/>
+        <path d="M72 62 q48 -19 96 0" fill="none" stroke="#8B6914" stroke-width="1"/>
+        <circle cx="120" cy="36" r="4.2" fill="none" stroke="#E8C96A" stroke-width="1.1"/>
+        <path d="M82 102 q19 -12 38 -2" fill="none" stroke="#C9A84C" stroke-width="2" stroke-linecap="round"/>
+        <path d="M158 102 q-19 -12 -38 -2" fill="none" stroke="#C9A84C" stroke-width="2" stroke-linecap="round"/>
+        <g>
+          <path d="M88 120 q13 -11 26 0 q-13 11 -26 0 z" fill="#0D0A06" stroke="#C9A84C" stroke-width="1.3"/>
+          <circle id="ustadPupL" cx="101" cy="120" r="3.9" fill="#E8C96A"/>
+          <rect id="ustadLidL" x="86" y="107" width="30" height="0" fill="#0D0A06"/>
+          <path d="M88 120 q13 -11 26 0" fill="none" stroke="#C9A84C" stroke-width="1.3"/>
+        </g>
+        <g>
+          <path d="M126 120 q13 -11 26 0 q-13 11 -26 0 z" fill="#0D0A06" stroke="#C9A84C" stroke-width="1.3"/>
+          <circle id="ustadPupR" cx="139" cy="120" r="3.9" fill="#E8C96A"/>
+          <rect id="ustadLidR" x="124" y="107" width="30" height="0" fill="#0D0A06"/>
+          <path d="M126 120 q13 -11 26 0" fill="none" stroke="#C9A84C" stroke-width="1.3"/>
+        </g>
+        <path d="M120 128 q-6 20 -3 29 q4 5 10 3" fill="none" stroke="#C9A84C" stroke-width="1.4" stroke-linecap="round"/>
+        <path id="ustadMouth" d="M105 174 q15 6 30 0" fill="none" stroke="#C9A84C" stroke-width="1.7" stroke-linecap="round"/>
+        <path d="M99 186 q21 30 42 0" fill="none" stroke="#8B6914" stroke-width="1.1" opacity="0.8"/>
+      </g>
+    </svg>
+    <div class="ustad-say">
+      <span id="ustadText"></span><span class="ustad-caret" id="ustadCaret">▍</span>
+    </div>
+    <button class="ustad-speak" id="ustadSpeak">♪ Sesli Dinle</button>
+  </div>
+
   <!-- BUGÜNÜN KIRAATİ (günlük kanca) -->
   <div class="daily-card" id="dailyCard">
     <div class="daily-loading" id="dailyLoading">
@@ -1758,6 +1829,7 @@ function handleFile(file) {
       c.getContext('2d').drawImage(tmpImg, 0, 0, w, h);
       const jpegUrl = c.toDataURL('image/jpeg', 0.85);
       imageBase64 = jpegUrl.split(',')[1];
+      ustadSay('yuklendi');
       imageMediaType = 'image/jpeg';
 
       previewImage.onload = () => {
@@ -2044,6 +2116,7 @@ function runScanCounters() {
 }
 
 function renderResults(data) {
+  ustadSay('okundu');
   document.getElementById('dominantTrait').innerHTML =
     `${data.dominantTrait}<br><span style="font-size:1rem;font-family:'Crimson Pro';font-style:italic;opacity:0.7">${data.dominantTraitTR}</span>`;
 
@@ -2085,6 +2158,7 @@ function showError(msg) {
 
 document.getElementById('resetBtn').addEventListener('click', () => {
   imageBase64 = null;
+  ustadSay('bos');
   // Profil açılarını sıfırla
   angleRightB64 = null; angleLeftB64 = null;
   ['angleThumbR','angleThumbL'].forEach(id => {
@@ -2662,11 +2736,13 @@ function setMode(match) {
     matchMode.style.display = 'block';
     soloEls.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
     document.getElementById('analyzeBtn').style.display = 'none';
+    ustadSay('eslesme');
   } else {
     tabSolo.classList.add('active'); tabMatch.classList.remove('active');
     matchMode.style.display = 'none';
     document.getElementById('uploadZone').style.display = 'block';
     document.getElementById('angles').style.display = 'block';
+    ustadSay(imageBase64 ? 'yuklendi' : 'bos');
   }
 }
 tabSolo.addEventListener('click', () => setMode(false));
@@ -2797,6 +2873,150 @@ document.getElementById('matchReset').addEventListener('click', () => {
   document.getElementById('matchResult').style.display = 'none';
   errorBox.style.display = 'none';
 });
+
+// ---- ÜSTAD SÎMASI: canlılık + bağlama göre konuşma ----
+const USTAD_LINES = {
+  bos: [
+    "Hoş geldin. Ben sîmâ okurum.",
+    "Yüzünü göster, yolunu söyleyeyim.",
+    "Alnında niyet, gözünde mizaç yazılıdır."
+  ],
+  yuklendi: [
+    "Sîmânı gördüm. Okuyalım mı?",
+    "Hazırsan hatlarını çözeyim."
+  ],
+  okundu: [
+    "Sîmân okundu. Yolunu da okuyayım mı?",
+    "Dilersen yıldızlarını da harmanlayalım."
+  ],
+  eslesme: [
+    "İki sîmâ getir, aralarındakini söyleyeyim.",
+    "Kimin kiminle ne olduğunu hatlar bilir."
+  ]
+};
+
+let ustadState = 'bos';
+let ustadIdx = 0, ustadChar = 0, ustadTimer = null;
+
+function ustadCurrentLines() { return USTAD_LINES[ustadState] || USTAD_LINES.bos; }
+
+function ustadType() {
+  const el = document.getElementById('ustadText');
+  if (!el) return;
+  const lines = ustadCurrentLines();
+  const line = lines[ustadIdx % lines.length];
+  if (ustadChar <= line.length) {
+    el.textContent = line.slice(0, ustadChar++);
+    ustadTimer = setTimeout(ustadType, 55);
+  } else {
+    ustadTimer = setTimeout(ustadErase, 2400);
+  }
+}
+
+function ustadErase() {
+  const el = document.getElementById('ustadText');
+  if (!el) return;
+  const lines = ustadCurrentLines();
+  const line = lines[ustadIdx % lines.length];
+  if (ustadChar > 0) {
+    ustadChar--;
+    el.textContent = line.slice(0, ustadChar);
+    ustadTimer = setTimeout(ustadErase, 22);
+  } else {
+    ustadIdx++;
+    ustadTimer = setTimeout(ustadType, 320);
+  }
+}
+
+// Uygulamanın durumuna göre üstadın söylediklerini değiştir
+function ustadSay(state) {
+  if (!USTAD_LINES[state] || state === ustadState) return;
+  ustadState = state;
+  ustadIdx = 0; ustadChar = 0;
+  clearTimeout(ustadTimer);
+  const el = document.getElementById('ustadText');
+  if (el) el.textContent = '';
+  ustadType();
+}
+
+(function initUstad() {
+  const face = document.getElementById('ustadFace');
+  if (!face) return;
+  ustadType();
+
+  // imleç yanıp sönsün
+  const caret = document.getElementById('ustadCaret');
+  setInterval(() => {
+    if (caret) caret.style.opacity = caret.style.opacity === '0' ? '1' : '0';
+  }, 520);
+
+  // göz takibi + baş dönüşü
+  const pL = document.getElementById('ustadPupL');
+  const pR = document.getElementById('ustadPupR');
+  const sway = document.getElementById('ustadSway');
+  let tracking = false;
+  function look(cx, cy) {
+    const r = face.getBoundingClientRect();
+    if (!r.width) return;
+    tracking = true;
+    const nx = Math.max(-1, Math.min(1, (cx - (r.left + r.width / 2)) / (r.width / 2)));
+    const ny = Math.max(-1, Math.min(1, (cy - (r.top + r.height / 2)) / (r.height / 2)));
+    pL.setAttribute('cx', 101 + nx * 4.4); pL.setAttribute('cy', 120 + ny * 2.6);
+    pR.setAttribute('cx', 139 + nx * 4.4); pR.setAttribute('cy', 120 + ny * 2.6);
+    sway.setAttribute('transform', `translate(${nx * 4},${ny * 2})`);
+  }
+  document.addEventListener('mousemove', e => look(e.clientX, e.clientY));
+  document.addEventListener('touchmove', e => {
+    const t = e.touches[0]; if (t) look(t.clientX, t.clientY);
+  }, { passive: true });
+
+  // dokunulmadığında hafif nefes salınımı
+  const t0 = Date.now();
+  setInterval(() => {
+    if (tracking) return;
+    const s = Math.sin((Date.now() - t0) / 1500);
+    sway.setAttribute('transform', `translate(${s * 3},0)`);
+  }, 60);
+  // bir süre hareket yoksa takibi bırak, nefese dön
+  let idleT;
+  ['mousemove', 'touchmove'].forEach(ev => document.addEventListener(ev, () => {
+    clearTimeout(idleT);
+    idleT = setTimeout(() => { tracking = false; }, 2500);
+  }, { passive: true }));
+
+  // göz kırpma
+  const lL = document.getElementById('ustadLidL');
+  const lR = document.getElementById('ustadLidR');
+  function blink() {
+    let h = 0, dir = 1;
+    const iv = setInterval(() => {
+      h += dir * 4;
+      if (h >= 15) dir = -1;
+      if (h <= 0 && dir === -1) { clearInterval(iv); h = 0; }
+      lL.setAttribute('height', h); lR.setAttribute('height', h);
+    }, 16);
+    setTimeout(blink, 2600 + Math.random() * 3400);
+  }
+  setTimeout(blink, 1500);
+
+  // sesli okuma — tarayıcının kendi Türkçe sesi (ek maliyet yok)
+  const btn = document.getElementById('ustadSpeak');
+  const mouth = document.getElementById('ustadMouth');
+  btn.addEventListener('click', () => {
+    if (!('speechSynthesis' in window)) {
+      btn.textContent = '♪ Bu tarayıcı desteklemiyor';
+      return;
+    }
+    const lines = ustadCurrentLines();
+    const u = new SpeechSynthesisUtterance(lines[ustadIdx % lines.length]);
+    u.lang = 'tr-TR'; u.rate = 0.9; u.pitch = 0.85;
+    const vs = (window.speechSynthesis.getVoices() || []).filter(v => /tr/i.test(v.lang));
+    if (vs.length) u.voice = vs[0];
+    u.onstart = () => { mouth.setAttribute('d', 'M105 174 q15 13 30 0'); };
+    u.onend = () => { mouth.setAttribute('d', 'M105 174 q15 6 30 0'); };
+    try { window.speechSynthesis.cancel(); window.speechSynthesis.speak(u); } catch (e) {}
+  });
+})();
 
 // ---- BUGÜNÜN KIRAATİ (günlük kanca) ----
 const DAILY_KEY = 'sima_birth';
