@@ -15,9 +15,7 @@ import json
 import base64
 
 from flask import Flask, request, jsonify, send_from_directory
-from google import genai
-from google.genai import types
-from google.genai import errors as genai_errors
+import anthropic
 
 # Doğum haritası hesabı (Moshier efemerisi — dış veri/internet gerektirmez)
 try:
@@ -354,51 +352,54 @@ def compute_ebced(name):
     }
 
 # API anahtarını ortam değişkeninden oku (güvenli yöntem)
-API_KEY = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 if not API_KEY:
-    print("\n[UYARI] GEMINI_API_KEY ortam değişkeni ayarlanmamış!")
-    print("Render'da Environment kısmına GEMINI_API_KEY ekle (aistudio.google.com'dan al).\n")
+    print("\n[UYARI] ANTHROPIC_API_KEY ortam değişkeni ayarlanmamış!")
+    print("Render'da Environment kısmına ANTHROPIC_API_KEY ekle.\n")
 
-client = genai.Client(api_key=API_KEY)
+client = anthropic.Anthropic(api_key=API_KEY)
 
-# Vision destekli, ücretsiz katmanda da çalışan model.
-# İstersen "gemini-2.5-flash-lite" (daha hızlı/ucuz) yapabilirsin.
-MODEL = "gemini-2.5-flash"
-
-
-def _parse_json(text):
-    """Gemini bazen JSON'u ``` çitleri içinde döndürebilir; güvenli ayrıştır."""
-    t = (text or "").strip()
-    if t.startswith("```"):
-        t = t.lstrip("`")
-        if t[:4].lower() == "json":
-            t = t[4:]
-        t = t.strip("`").strip()
-    return json.loads(t)
+# Vision destekli model.
+# Daha ucuz istersen: "claude-haiku-4-5-20251001"
+MODEL = "claude-sonnet-4-6"
 
 
 def gemini_json(parts, schema, max_tokens):
-    """Verilen içerik parçalarını Gemini'ye gönderip yapılandırılmış JSON döndürür.
-    parts: metin (str) ve/veya types.Part görsel parçalarından oluşan liste.
+    """İçerik parçalarını modele gönderip yapılandırılmış JSON döndürür.
+    parts: metin (str) ve/veya image_part() ile üretilmiş görsel bloklarından oluşan liste.
     schema: beklenen JSON şeması (dict).
+    Tool use kullanır — çıktının her zaman geçerli yapıda gelmesini garantiler.
+    (İsim geriye dönük uyumluluk için korundu.)
     """
-    resp = client.models.generate_content(
+    content = []
+    for p in parts:
+        content.append({"type": "text", "text": p} if isinstance(p, str) else p)
+
+    tool = {
+        "name": "yapilandirilmis_cevap",
+        "description": "İstenen yapıda sonucu döndürür.",
+        "input_schema": schema,
+    }
+    message = client.messages.create(
         model=MODEL,
-        contents=parts,
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=schema,
-            max_output_tokens=max_tokens,
-            temperature=0.9,
-        ),
+        max_tokens=max_tokens,
+        temperature=1.0,
+        tools=[tool],
+        tool_choice={"type": "tool", "name": "yapilandirilmis_cevap"},
+        messages=[{"role": "user", "content": content}],
     )
-    return _parse_json(resp.text)
+    for block in message.content:
+        if block.type == "tool_use" and block.name == "yapilandirilmis_cevap":
+            return block.input
+    return None
 
 
 def image_part(image_b64, media_type):
-    """Tarayıcıdan gelen base64 görseli Gemini parçasına çevirir."""
-    raw = base64.b64decode(image_b64)
-    return types.Part.from_bytes(data=raw, mime_type=media_type)
+    """Tarayıcıdan gelen base64 görseli mesaj bloğuna çevirir."""
+    return {
+        "type": "image",
+        "source": {"type": "base64", "media_type": media_type, "data": image_b64},
+    }
 
 
 def face_parts(data):
@@ -528,7 +529,7 @@ def analyze():
 
         return jsonify(result)
 
-    except genai_errors.APIError as e:
+    except anthropic.APIError as e:
         return jsonify({"error": f"API hatası: {str(e)}"}), 502
     except Exception as e:
         return jsonify({"error": f"Beklenmeyen hata: {str(e)}"}), 500
@@ -717,7 +718,7 @@ gibi yargı DEĞİL. Yalnızca istenen JSON yapısında cevap ver."""
             result["ebced"] = ebced
         return jsonify(result)
 
-    except genai_errors.APIError as e:
+    except anthropic.APIError as e:
         return jsonify({"error": f"API hatası: {str(e)}"}), 502
     except Exception as e:
         return jsonify({"error": f"Beklenmeyen hata: {str(e)}"}), 500
@@ -778,7 +779,7 @@ Bu eğlence ve kültürel bir uygulamadır. Yalnızca istenen JSON yapısında c
             return jsonify({"error": "Kıraat üretilemedi, tekrar dene."}), 502
         return jsonify(result)
 
-    except genai_errors.APIError as e:
+    except anthropic.APIError as e:
         return jsonify({"error": f"API hatası: {str(e)}"}), 502
     except Exception as e:
         return jsonify({"error": f"Beklenmeyen hata: {str(e)}"}), 500
@@ -846,7 +847,7 @@ def el():
             return jsonify({"error": "El okuması üretilemedi, tekrar dene."}), 502
         return jsonify(result)
 
-    except genai_errors.APIError as e:
+    except anthropic.APIError as e:
         return jsonify({"error": f"API hatası: {str(e)}"}), 502
     except Exception as e:
         return jsonify({"error": f"Beklenmeyen hata: {str(e)}"}), 500
@@ -942,7 +943,7 @@ def eslesme():
             result["natal2"] = natal2
         return jsonify(result)
 
-    except genai_errors.APIError as e:
+    except anthropic.APIError as e:
         return jsonify({"error": f"API hatası: {str(e)}"}), 502
     except Exception as e:
         return jsonify({"error": f"Beklenmeyen hata: {str(e)}"}), 500
@@ -1062,7 +1063,7 @@ def gelecek():
             return jsonify({"error": "Kıraat üretilemedi, tekrar dene."}), 502
         return jsonify(result)
 
-    except genai_errors.APIError as e:
+    except anthropic.APIError as e:
         return jsonify({"error": f"API hatası: {str(e)}"}), 502
     except Exception as e:
         return jsonify({"error": f"Beklenmeyen hata: {str(e)}"}), 500
