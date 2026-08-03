@@ -983,12 +983,12 @@ GELECEK_TOOL = {
                 "alışkanlık. SADECE yaşam temposu ve mizaç; hastalık, teşhis, organ veya tıbbi "
                 "durumdan ASLA söz etme. 6-8 cümle, somut."
             ),
-            "mühür": {
+            "muhur": {
                 "type": "string",
                 "description": "Tüm okumayı bağlayan tek cümlelik veciz kapanış",
             },
         },
-        "required": ["ask", "bereket", "kariyer", "canlilik", "mühür"],
+        "required": ["ask", "bereket", "kariyer", "canlilik", "muhur"],
     },
 }
 
