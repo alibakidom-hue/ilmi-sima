@@ -2481,31 +2481,40 @@ let lastGelecek = null;
 const TEMA_ADI = { ask: 'Aşk', bereket: 'Bereket', kariyer: 'Kariyer', canlilik: 'Canlılık' };
 
 document.getElementById('gelecekBtn').addEventListener('click', async () => {
-  if (!imageBase64) return;
   const btn = document.getElementById('gelecekBtn');
-  btn.disabled = true;
-  document.getElementById('gelecekInvite').style.display = 'none';
-  loadingEl.querySelector('.loading-text').textContent = 'Yolun kıraati yazılıyor...';
-  loadingEl.style.display = 'block';
-  errorBox.style.display = 'none';
-  Sound.scanStart();
-
-  // Doğum bilgisi varsa harmanla (karma formundan ya da günlük kayıttan)
-  const extra = {};
-  const d = parseInt(document.getElementById('bDay').value);
-  const m = parseInt(document.getElementById('bMonth').value);
-  const y = parseInt(document.getElementById('bYear').value);
-  if (d && m && y) {
-    const t = document.getElementById('bTime').value;
-    let hour = 12.0;
-    if (t) { const [hh, mm] = t.split(':').map(Number); hour = hh + (mm || 0) / 60; }
-    extra.birth = { year: y, month: m, day: d, hour, city: document.getElementById('bCity').value.trim() };
-  } else {
-    const saved = getBirth();
-    if (saved) extra.birth = saved;
+  const invite = document.getElementById('gelecekInvite');
+  if (!imageBase64) {
+    showError('Önce bir yüz fotoğrafı yükleyip sîmânı okut.');
+    return;
   }
+  btn.disabled = true;
+  invite.style.display = 'none';
+  errorBox.style.display = 'none';
 
   try {
+    const lt = loadingEl.querySelector('.loading-text');
+    if (lt) lt.textContent = 'Yolun kıraati yazılıyor...';
+    loadingEl.style.display = 'block';
+    try { Sound.scanStart(); } catch (e) {}
+
+    // Doğum bilgisi varsa harmanla (karma formundan ya da günlük kayıttan)
+    const extra = {};
+    try {
+      const d = parseInt(document.getElementById('bDay').value);
+      const m = parseInt(document.getElementById('bMonth').value);
+      const y = parseInt(document.getElementById('bYear').value);
+      if (d && m && y) {
+        const t = document.getElementById('bTime').value;
+        let hour = 12.0;
+        if (t) { const [hh, mm] = t.split(':').map(Number); hour = hh + (mm || 0) / 60; }
+        const cityEl = document.getElementById('bCity');
+        extra.birth = { year: y, month: m, day: d, hour, city: cityEl ? cityEl.value.trim() : '' };
+      } else {
+        const saved = getBirth();
+        if (saved) extra.birth = saved;
+      }
+    } catch (e) { console.warn('doğum bilgisi okunamadı', e); }
+
     const res = await fetch('/gelecek', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -2515,6 +2524,8 @@ document.getElementById('gelecekBtn').addEventListener('click', async () => {
     let data;
     try { data = JSON.parse(raw); }
     catch (e) {
+      if (res.status === 404)
+        throw new Error('Sunucuda /gelecek adresi yok — app.py güncel sürümü yüklenmemiş olabilir.');
       if (res.status === 502 || res.status === 504)
         throw new Error('Sunucu cevap veremedi (zaman aşımı). Birkaç saniye sonra dene.');
       throw new Error('Sunucudan beklenmeyen cevap (durum ' + res.status + ').');
@@ -2524,7 +2535,8 @@ document.getElementById('gelecekBtn').addEventListener('click', async () => {
     Sound.reveal();
     renderGelecek('ask');
     document.getElementById('gelecekResult').style.display = 'block';
-    document.getElementById('gelecekMuhur').textContent = data['mühür'] ? ('❝ ' + data['mühür'] + ' ❞') : '';
+    const mh = data.muhur || data['mühür'] || '';
+    document.getElementById('gelecekMuhur').textContent = mh ? ('❝ ' + mh + ' ❞') : '';
     document.getElementById('gelecekResult').scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (err) {
     showError('Hata: ' + err.message);
