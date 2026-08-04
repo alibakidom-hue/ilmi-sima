@@ -2596,7 +2596,7 @@ document.getElementById('gelecekBtn').addEventListener('click', async () => {
 
   try {
     const lt = loadingEl.querySelector('.loading-text');
-    if (lt) lt.textContent = 'Yolun kıraati yazılıyor...';
+    if (lt) lt.textContent = 'Yolun kıraati yazılıyor... (derin okuma — bir dakikaya kadar sürebilir)';
     loadingEl.style.display = 'block';
     try { Sound.scanStart(); } catch (e) {}
 
@@ -2618,11 +2618,16 @@ document.getElementById('gelecekBtn').addEventListener('click', async () => {
       }
     } catch (e) { console.warn('doğum bilgisi okunamadı', e); }
 
-    const res = await fetch('/gelecek', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(facePayload(extra))
-    });
+    let res;
+    try {
+      res = await fetch('/gelecek', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(facePayload(extra))
+      });
+    } catch (netErr) {
+      throw new Error('Sunucuya ulaşılamadı — uygulama uykudan uyanıyor ya da bağlantı koptu. 30 saniye bekleyip tekrar dene.');
+    }
     const raw = await res.text();
     let data;
     try { data = JSON.parse(raw); }
