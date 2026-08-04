@@ -744,13 +744,19 @@
     margin: -6px 0 26px;
   }
   .ustad-face {
-    width: 186px;
+    width: 210px;
     height: auto;
     display: block;
     margin: 0 auto;
     overflow: visible;
-    filter: drop-shadow(0 0 22px rgba(201,168,76,0.12));
+    filter: drop-shadow(0 0 26px rgba(201,168,76,0.14));
   }
+  #ustadBrowL, #ustadBrowR {
+    transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-origin: center;
+    transform-box: fill-box;
+  }
+  #ustadMouth { transition: d 0.4s ease; }
   .ustad-say {
     min-height: 46px;
     margin: 12px 14px 0;
@@ -1339,59 +1345,58 @@
     <div class="arabic-title">علم السيماء</div>
     <div class="latin-title">İlm-i Sîmâ</div>
     <div class="divider"><span class="divider-ornament">✦</span></div>
-    <div class="subtitle">Yüz hatlarından karakter ve mizaç analizi</div>
+    <div class="subtitle">Sîmân geçmişini anlatmaz — yolunu gösterir. Aşk, bereket, kariyer.</div>
   </div>
 
   <!-- ÜSTAD SÎMASI — karşılayıcı yüz -->
   <div class="ustad" id="ustad">
-    <svg class="ustad-face" id="ustadFace" viewBox="0 0 240 236" aria-label="İlm-i Sîmâ üstadı">
+    <svg class="ustad-face" id="ustadFace" viewBox="0 0 260 190" aria-label="İlm-i Sîmâ üstadı">
+      <defs>
+        <radialGradient id="ustadAura" cx="50%" cy="45%" r="55%">
+          <stop offset="0%" stop-color="#C9A84C" stop-opacity="0.10"/>
+          <stop offset="70%" stop-color="#C9A84C" stop-opacity="0.03"/>
+          <stop offset="100%" stop-color="#C9A84C" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <ellipse cx="130" cy="92" rx="120" ry="88" fill="url(#ustadAura)"/>
+
       <g id="ustadSway">
-        <!-- madalyon halkası -->
-        <circle cx="120" cy="116" r="104" fill="none" stroke="#C9A84C" stroke-width="1" opacity="0.22"/>
-        <circle cx="120" cy="116" r="97" fill="none" stroke="#C9A84C" stroke-width="0.7" opacity="0.35"/>
-        <circle cx="120" cy="19" r="2.4" fill="#C9A84C" opacity="0.7"/>
-        <circle cx="120" cy="213" r="2.4" fill="#C9A84C" opacity="0.7"/>
-        <circle cx="23" cy="116" r="2.4" fill="#C9A84C" opacity="0.7"/>
-        <circle cx="217" cy="116" r="2.4" fill="#C9A84C" opacity="0.7"/>
-
-        <!-- yüz -->
-        <ellipse cx="120" cy="122" rx="54" ry="64" fill="#120d07" stroke="#C9A84C" stroke-width="2"/>
-
-        <!-- sarık: tek kütle, sade -->
-        <path d="M66 92 C66 36 174 36 174 92 C142 78 98 78 66 92 Z" fill="#1a1409" stroke="#C9A84C" stroke-width="2" stroke-linejoin="round"/>
-        <path d="M74 74 q46 -17 92 0" fill="none" stroke="#8B6914" stroke-width="1"/>
-        <path d="M120 40 v-11" stroke="#C9A84C" stroke-width="1.4" stroke-linecap="round"/>
-        <circle cx="120" cy="25" r="4" fill="none" stroke="#E8C96A" stroke-width="1.3"/>
-
-        <!-- alında sekiz köşeli yıldız (imza öğesi) -->
-        <g opacity="0.95">
-          <rect x="110" y="99" width="20" height="20" fill="none" stroke="#E8C96A" stroke-width="1.2"/>
-          <rect x="110" y="99" width="20" height="20" fill="none" stroke="#E8C96A" stroke-width="1.2" transform="rotate(45 120 109)"/>
+        <!-- alında sekiz köşeli yıldız (üçüncü göz) -->
+        <g id="ustadStar" opacity="0.9">
+          <rect x="121" y="21" width="18" height="18" fill="none" stroke="#E8C96A" stroke-width="1.1"/>
+          <rect x="121" y="21" width="18" height="18" fill="none" stroke="#E8C96A" stroke-width="1.1" transform="rotate(45 130 30)"/>
+          <circle cx="130" cy="30" r="2.2" fill="#E8C96A"/>
         </g>
 
-        <!-- kaşlar: tek sürekli hat -->
-        <path d="M74 137 Q97 121 117 134 M123 134 Q143 121 166 137" fill="none" stroke="#C9A84C" stroke-width="2.6" stroke-linecap="round"/>
-
-        <!-- gözler -->
-        <g>
-          <path d="M84 152 Q100 138 116 152 Q100 165 84 152 Z" fill="#0D0A06" stroke="#C9A84C" stroke-width="1.6"/>
-          <circle id="ustadPupL" cx="100" cy="152" r="4.8" fill="#E8C96A"/>
-          <rect id="ustadLidL" x="82" y="137" width="36" height="0" fill="#120d07"/>
-          <path d="M84 152 Q100 138 116 152" fill="none" stroke="#C9A84C" stroke-width="1.6"/>
+        <!-- kaşlar: ayrı gruplar, mimik için oynar -->
+        <g id="ustadBrowL">
+          <path d="M56 76 Q86 58 116 72" fill="none" stroke="#C9A84C" stroke-width="3.4" stroke-linecap="round"/>
         </g>
-        <g>
-          <path d="M124 152 Q140 138 156 152 Q140 165 124 152 Z" fill="#0D0A06" stroke="#C9A84C" stroke-width="1.6"/>
-          <circle id="ustadPupR" cx="140" cy="152" r="4.8" fill="#E8C96A"/>
-          <rect id="ustadLidR" x="122" y="137" width="36" height="0" fill="#120d07"/>
-          <path d="M124 152 Q140 138 156 152" fill="none" stroke="#C9A84C" stroke-width="1.6"/>
+        <g id="ustadBrowR">
+          <path d="M144 72 Q174 58 204 76" fill="none" stroke="#C9A84C" stroke-width="3.4" stroke-linecap="round"/>
         </g>
 
-        <!-- burun: tek darbe -->
-        <path d="M120 158 v18 q0 5 7 4" fill="none" stroke="#C9A84C" stroke-width="1.6" stroke-linecap="round"/>
+        <!-- gözler: badem, iri, boşlukta -->
+        <g id="ustadEyeL">
+          <path d="M60 100 Q88 78 116 100 Q88 121 60 100 Z" fill="#0D0A06" stroke="#C9A84C" stroke-width="1.9"/>
+          <circle id="ustadPupL" cx="88" cy="100" r="7.5" fill="#E8C96A"/>
+          <circle cx="91" cy="97" r="2.2" fill="#0D0A06" opacity="0.85"/>
+          <rect id="ustadLidL" x="58" y="78" width="60" height="0" fill="#0D0A06"/>
+          <path d="M60 100 Q88 78 116 100" fill="none" stroke="#C9A84C" stroke-width="1.9"/>
+        </g>
+        <g id="ustadEyeR">
+          <path d="M144 100 Q172 78 200 100 Q172 121 144 100 Z" fill="#0D0A06" stroke="#C9A84C" stroke-width="1.9"/>
+          <circle id="ustadPupR" cx="172" cy="100" r="7.5" fill="#E8C96A"/>
+          <circle cx="175" cy="97" r="2.2" fill="#0D0A06" opacity="0.85"/>
+          <rect id="ustadLidR" x="142" y="78" width="60" height="0" fill="#0D0A06"/>
+          <path d="M144 100 Q172 78 200 100" fill="none" stroke="#C9A84C" stroke-width="1.9"/>
+        </g>
 
-        <!-- ağız -->
-        <path id="ustadMouth" d="M104 190 q16 6 32 0" fill="none" stroke="#C9A84C" stroke-width="1.9" stroke-linecap="round"/>
-        <path d="M97 198 q23 26 46 0" fill="none" stroke="#8B6914" stroke-width="1.1" opacity="0.55"/>
+        <!-- alt kirpik vurgusu (mistik derinlik) -->
+        <path d="M74 112 q14 7 28 2 M158 114 q14 5 28 -2" fill="none" stroke="#8B6914" stroke-width="1" opacity="0.6"/>
+
+        <!-- ağız: tek hat, mimikle şekil değiştirir -->
+        <path id="ustadMouth" d="M104 156 Q130 165 156 156" fill="none" stroke="#C9A84C" stroke-width="2.4" stroke-linecap="round"/>
       </g>
     </svg>
     <div class="ustad-say">
@@ -1617,9 +1622,9 @@
 
     <!-- GELECEK KIRAATİ katmanı -->
     <div class="karma-invite" id="gelecekInvite">
-      <div class="karma-invite-title">✦ Yolunu Oku ✦</div>
-      <div class="karma-invite-text">Aşk, bereket, kariyer ve canlılık — sîmândaki hatların hangi yola meylettiğini göster.</div>
-      <button class="karma-toggle-btn" id="gelecekBtn">Yolumu Göster</button>
+      <div class="karma-invite-title">✦ Asıl Merak Ettiğin ✦</div>
+      <div class="karma-invite-text">Mizacını gördün — peki yolun? Aşkın nereye akıyor, bereketin hangi kapıdan girecek, hangi işte parlayacaksın? Sîmân söylesin.</div>
+      <button class="karma-toggle-btn" id="gelecekBtn">Yolumu Oku</button>
     </div>
 
     <div class="gelecek-result" id="gelecekResult">
@@ -2898,24 +2903,26 @@ document.getElementById('matchReset').addEventListener('click', () => {
   errorBox.style.display = 'none';
 });
 
-// ---- ÜSTAD SÎMASI: canlılık + bağlama göre konuşma ----
+// ---- ÜSTAD SÎMASI: mimikler + gelecek odaklı sohbet ----
 const USTAD_LINES = {
   bos: [
-    "Hoş geldin. Ben sîmâ okurum.",
-    "Yüzünü göster, yolunu söyleyeyim.",
-    "Alnında niyet, gözünde mizaç yazılıdır."
+    "Gel yaklaş... Herkes geçmişini bilir; ben önündekini okurum.",
+    "Aşkın mı, bereketin mi, yolun mu? Hepsi sîmânda yazılı.",
+    "Bir yüz göster bana. Sana bilmediğini söyleyeyim.",
+    "Merak etmez misin... hatların seni nereye çekiyor?"
   ],
   yuklendi: [
-    "Sîmânı gördüm. Okuyalım mı?",
-    "Hazırsan hatlarını çözeyim."
+    "Hmm... ilginç bir sîmâ bu. Okumama izin ver.",
+    "Hatlarında bir şey görüyorum. Başlayalım mı?"
   ],
   okundu: [
-    "Sîmân okundu. Yolunu da okuyayım mı?",
-    "Dilersen yıldızlarını da harmanlayalım."
+    "Mizacını gördüm. Ama asıl merak ettiğin önündeki yol, değil mi?",
+    "Şimdi sıra geleceğinde: aşkın, bereketin, kariyerin... Yolunu Oku'ya dokun.",
+    "Bir adım daha var. Yıldızlarını da katarsam, yol netleşir."
   ],
   eslesme: [
-    "İki sîmâ getir, aralarındakini söyleyeyim.",
-    "Kimin kiminle ne olduğunu hatlar bilir."
+    "İki sîmâ getir... aranızda ne olacağını söyleyeyim.",
+    "İki yol kesişince ne doğar? Hatlar bilir."
   ]
 };
 
@@ -2931,9 +2938,9 @@ function ustadType() {
   const line = lines[ustadIdx % lines.length];
   if (ustadChar <= line.length) {
     el.textContent = line.slice(0, ustadChar++);
-    ustadTimer = setTimeout(ustadType, 55);
+    ustadTimer = setTimeout(ustadType, 52);
   } else {
-    ustadTimer = setTimeout(ustadErase, 2400);
+    ustadTimer = setTimeout(ustadErase, 2600);
   }
 }
 
@@ -2945,14 +2952,14 @@ function ustadErase() {
   if (ustadChar > 0) {
     ustadChar--;
     el.textContent = line.slice(0, ustadChar);
-    ustadTimer = setTimeout(ustadErase, 22);
+    ustadTimer = setTimeout(ustadErase, 20);
   } else {
     ustadIdx++;
-    ustadTimer = setTimeout(ustadType, 320);
+    ustadExpress('rastgele');   // her yeni cümlede yeni mimik
+    ustadTimer = setTimeout(ustadType, 340);
   }
 }
 
-// Uygulamanın durumuna göre üstadın söylediklerini değiştir
 function ustadSay(state) {
   if (!USTAD_LINES[state] || state === ustadState) return;
   ustadState = state;
@@ -2960,72 +2967,112 @@ function ustadSay(state) {
   clearTimeout(ustadTimer);
   const el = document.getElementById('ustadText');
   if (el) el.textContent = '';
+  ustadExpress(state === 'okundu' ? 'memnun' : state === 'yuklendi' ? 'merakli' : 'sakin');
   ustadType();
 }
+
+// ---- MİMİK MOTORU ----
+// Kaşlar, gözkapakları ve ağız pozlarla oynar; süzülmeyle birleşince yüz canlanır.
+const ustadPoses = {
+  sakin:   { browL: 0,  browR: 0,  browTilt: 0,  lid: 0,  mouth: 'M104 156 Q130 165 156 156' },
+  merakli: { browL: -7, browR: -10, browTilt: -3, lid: 0,  mouth: 'M106 158 Q130 160 154 156' },
+  supheci: { browL: 3,  browR: -9, browTilt: 4,  lid: 7,  mouth: 'M106 158 Q130 156 154 160' },
+  memnun:  { browL: -4, browR: -4, browTilt: 0,  lid: 3,  mouth: 'M102 154 Q130 170 158 154' },
+  dalgin:  { browL: 2,  browR: 2,  browTilt: 0,  lid: 9,  mouth: 'M108 158 Q130 161 152 158' },
+};
+
+function ustadExpress(poz) {
+  const keys = ['merakli', 'supheci', 'memnun', 'dalgin', 'sakin'];
+  const p = ustadPoses[poz] || ustadPoses[poz === 'rastgele' ? keys[Math.floor(Math.random() * keys.length)] : 'sakin'] || ustadPoses.sakin;
+  const bL = document.getElementById('ustadBrowL');
+  const bR = document.getElementById('ustadBrowR');
+  const m = document.getElementById('ustadMouth');
+  if (bL) bL.style.transform = `translateY(${p.browL}px) rotate(${-p.browTilt}deg)`;
+  if (bR) bR.style.transform = `translateY(${p.browR}px) rotate(${p.browTilt}deg)`;
+  if (m) m.setAttribute('d', p.mouth);
+  // göz kısma: kapaklar kalıcı hafif inik
+  const lL = document.getElementById('ustadLidL');
+  const lR = document.getElementById('ustadLidR');
+  if (lL && lR && !ustadBlinking) {
+    lL.setAttribute('height', p.lid); lR.setAttribute('height', p.lid);
+  }
+  ustadBaseLid = p.lid;
+}
+let ustadBaseLid = 0;
+let ustadBlinking = false;
 
 (function initUstad() {
   const face = document.getElementById('ustadFace');
   if (!face) return;
   ustadType();
+  // ara ara kendiliğinden mimik değiştir (canlılık)
+  setInterval(() => { if (Math.random() < 0.5) ustadExpress('rastgele'); }, 5200);
 
-  // imleç yanıp sönsün
   const caret = document.getElementById('ustadCaret');
   setInterval(() => {
     if (caret) caret.style.opacity = caret.style.opacity === '0' ? '1' : '0';
   }, 520);
 
-  // göz takibi + baş dönüşü
+  // göz takibi + baş süzülmesi
   const pL = document.getElementById('ustadPupL');
   const pR = document.getElementById('ustadPupR');
   const sway = document.getElementById('ustadSway');
-  let tracking = false;
+  let tx = 0, ty = 0;           // hedef (imleçten)
+  let fx = 0, fy = 0;           // süzülme (kendi kendine)
   function look(cx, cy) {
     const r = face.getBoundingClientRect();
     if (!r.width) return;
-    tracking = true;
-    const nx = Math.max(-1, Math.min(1, (cx - (r.left + r.width / 2)) / (r.width / 2)));
-    const ny = Math.max(-1, Math.min(1, (cy - (r.top + r.height / 2)) / (r.height / 2)));
-    pL.setAttribute('cx', 100 + nx * 5); pL.setAttribute('cy', 152 + ny * 3);
-    pR.setAttribute('cx', 140 + nx * 5); pR.setAttribute('cy', 152 + ny * 3);
-    sway.setAttribute('transform', `translate(${nx * 4},${ny * 2})`);
+    tx = Math.max(-1, Math.min(1, (cx - (r.left + r.width / 2)) / (r.width / 2)));
+    ty = Math.max(-1, Math.min(1, (cy - (r.top + r.height / 2)) / (r.height / 2)));
   }
   document.addEventListener('mousemove', e => look(e.clientX, e.clientY));
   document.addEventListener('touchmove', e => {
     const t = e.touches[0]; if (t) look(t.clientX, t.clientY);
   }, { passive: true });
 
-  // dokunulmadığında hafif nefes salınımı
+  // tek animasyon döngüsü: süzülme + bakış karışımı
   const t0 = Date.now();
   setInterval(() => {
-    if (tracking) return;
-    const s = Math.sin((Date.now() - t0) / 1500);
-    sway.setAttribute('transform', `translate(${s * 3},0)`);
-  }, 60);
-  // bir süre hareket yoksa takibi bırak, nefese dön
-  let idleT;
-  ['mousemove', 'touchmove'].forEach(ev => document.addEventListener(ev, () => {
-    clearTimeout(idleT);
-    idleT = setTimeout(() => { tracking = false; }, 2500);
-  }, { passive: true }));
+    const t = (Date.now() - t0) / 1000;
+    fx = Math.sin(t * 0.7) * 0.35 + Math.sin(t * 0.23) * 0.2;
+    fy = Math.cos(t * 0.5) * 0.22;
+    const nx = tx * 0.7 + fx * 0.5;
+    const ny = ty * 0.7 + fy * 0.5;
+    pL.setAttribute('cx', 88 + nx * 9); pL.setAttribute('cy', 100 + ny * 5);
+    pR.setAttribute('cx', 172 + nx * 9); pR.setAttribute('cy', 100 + ny * 5);
+    sway.setAttribute('transform',
+      `translate(${nx * 7 + Math.sin(t * 0.9) * 2}, ${ny * 4 + Math.sin(t * 1.3) * 2.5}) rotate(${nx * 1.6})`);
+  }, 40);
 
-  // göz kırpma
+  // göz kırpma (mimik kapak seviyesinin üstüne biner)
   const lL = document.getElementById('ustadLidL');
   const lR = document.getElementById('ustadLidR');
   function blink() {
-    let h = 0, dir = 1;
+    ustadBlinking = true;
+    let h = ustadBaseLid, dir = 1;
     const iv = setInterval(() => {
-      h += dir * 4;
-      if (h >= 18) dir = -1;
-      if (h <= 0 && dir === -1) { clearInterval(iv); h = 0; }
-      lL.setAttribute('height', h); lR.setAttribute('height', h);
+      h += dir * 6;
+      if (h >= 24) dir = -1;
+      if (h <= ustadBaseLid && dir === -1) {
+        clearInterval(iv); h = ustadBaseLid; ustadBlinking = false;
+      }
+      lL.setAttribute('height', Math.max(0, h));
+      lR.setAttribute('height', Math.max(0, h));
     }, 16);
-    setTimeout(blink, 2600 + Math.random() * 3400);
+    setTimeout(blink, 2400 + Math.random() * 3600);
   }
   setTimeout(blink, 1500);
 
-  // sesli okuma — tarayıcının kendi Türkçe sesi (ek maliyet yok)
+  // sesli okuma — cihazdaki en iyi Türkçe sesi seç, yavaş ve pes
   const btn = document.getElementById('ustadSpeak');
   const mouth = document.getElementById('ustadMouth');
+  function pickVoice() {
+    const all = window.speechSynthesis.getVoices() || [];
+    const tr = all.filter(v => /tr/i.test(v.lang));
+    // yerel (cihaz) sesleri genelde daha doğal; adında 'enhanced/premium' geçen varsa onu al
+    return tr.find(v => /enhanced|premium|natural/i.test(v.name)) ||
+           tr.find(v => v.localService) || tr[0] || null;
+  }
   btn.addEventListener('click', () => {
     if (!('speechSynthesis' in window)) {
       btn.textContent = '♪ Bu tarayıcı desteklemiyor';
@@ -3033,13 +3080,22 @@ function ustadSay(state) {
     }
     const lines = ustadCurrentLines();
     const u = new SpeechSynthesisUtterance(lines[ustadIdx % lines.length]);
-    u.lang = 'tr-TR'; u.rate = 0.9; u.pitch = 0.85;
-    const vs = (window.speechSynthesis.getVoices() || []).filter(v => /tr/i.test(v.lang));
-    if (vs.length) u.voice = vs[0];
-    u.onstart = () => { mouth.setAttribute('d', 'M104 190 q16 14 32 0'); };
-    u.onend = () => { mouth.setAttribute('d', 'M104 190 q16 6 32 0'); };
+    u.lang = 'tr-TR'; u.rate = 0.82; u.pitch = 0.7;
+    const v = pickVoice(); if (v) u.voice = v;
+    let talk = null;
+    u.onstart = () => {
+      ustadExpress('merakli');
+      let open = false;
+      talk = setInterval(() => {   // konuşurken ağız aç-kapa
+        open = !open;
+        mouth.setAttribute('d', open ? 'M104 156 Q130 174 156 156' : 'M104 156 Q130 163 156 156');
+      }, 170);
+    };
+    u.onend = () => { clearInterval(talk); ustadExpress('memnun'); };
     try { window.speechSynthesis.cancel(); window.speechSynthesis.speak(u); } catch (e) {}
   });
+  // bazı tarayıcılar sesleri geç yükler
+  if ('speechSynthesis' in window) window.speechSynthesis.onvoiceschanged = () => {};
 })();
 
 // ---- BUGÜNÜN KIRAATİ (günlük kanca) ----
