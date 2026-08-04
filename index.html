@@ -742,7 +742,19 @@
   .ustad {
     text-align: center;
     margin: -6px 0 26px;
+    position: relative;
   }
+  .ustad::before {
+    content: '';
+    position: absolute;
+    top: -10px; left: 50%;
+    transform: translateX(-50%);
+    width: 240px; height: 220px;
+    background: radial-gradient(ellipse at center, rgba(160,200,240,0.10), rgba(160,200,240,0.03) 55%, transparent 72%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .ustad-face { position: relative; z-index: 1; }
   .ustad-face {
     width: 210px;
     height: auto;
@@ -1350,53 +1362,77 @@
 
   <!-- ÜSTAD SÎMASI — karşılayıcı yüz -->
   <div class="ustad" id="ustad">
-    <svg class="ustad-face" id="ustadFace" viewBox="0 0 260 190" aria-label="İlm-i Sîmâ üstadı">
+    <svg class="ustad-face" id="ustadFace" viewBox="0 0 260 210" aria-label="İlm-i Sîmâ üstadı">
       <defs>
-        <radialGradient id="ustadAura" cx="50%" cy="45%" r="55%">
-          <stop offset="0%" stop-color="#C9A84C" stop-opacity="0.10"/>
-          <stop offset="70%" stop-color="#C9A84C" stop-opacity="0.03"/>
-          <stop offset="100%" stop-color="#C9A84C" stop-opacity="0"/>
+        <!-- sis dokusu: canlı dalgalanan türbülans -->
+        <filter id="ustadSmoke" x="-40%" y="-40%" width="180%" height="180%">
+          <feTurbulence id="ustadTurb" type="fractalNoise" baseFrequency="0.018 0.026" numOctaves="2" seed="7" result="noise">
+            <animate attributeName="baseFrequency" dur="14s" values="0.018 0.026;0.024 0.020;0.018 0.026" repeatCount="indefinite"/>
+          </feTurbulence>
+          <feDisplacementMap in="SourceGraphic" in2="noise" scale="14" xChannelSelector="R" yChannelSelector="G" result="disp"/>
+          <feGaussianBlur in="disp" stdDeviation="1.4"/>
+        </filter>
+        <!-- yumuşak parıltı -->
+        <filter id="ustadGlow" x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="3.2" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <radialGradient id="ustadHalo" cx="50%" cy="46%" r="52%">
+          <stop offset="0%" stop-color="#dCEBFF" stop-opacity="0.55"/>
+          <stop offset="42%" stop-color="#9fc4e8" stop-opacity="0.22"/>
+          <stop offset="100%" stop-color="#5a7fa8" stop-opacity="0"/>
+        </radialGradient>
+        <radialGradient id="ustadEyeGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+          <stop offset="55%" stop-color="#dCEBFF" stop-opacity="0.9"/>
+          <stop offset="100%" stop-color="#8fb6dd" stop-opacity="0"/>
         </radialGradient>
       </defs>
-      <ellipse cx="130" cy="92" rx="120" ry="88" fill="url(#ustadAura)"/>
+
+      <!-- ışık halesi (saç/aura) -->
+      <ellipse cx="130" cy="100" rx="122" ry="98" fill="url(#ustadHalo)"/>
 
       <g id="ustadSway">
-        <!-- alında sekiz köşeli yıldız (üçüncü göz) -->
-        <g id="ustadStar" opacity="0.9">
-          <rect x="121" y="21" width="18" height="18" fill="none" stroke="#E8C96A" stroke-width="1.1"/>
-          <rect x="121" y="21" width="18" height="18" fill="none" stroke="#E8C96A" stroke-width="1.1" transform="rotate(45 130 30)"/>
-          <circle cx="130" cy="30" r="2.2" fill="#E8C96A"/>
+        <!-- sisli yüz kütlesi: türbülansla dalgalanır -->
+        <g filter="url(#ustadSmoke)" opacity="0.92">
+          <!-- yüz gövdesi, buğulu açık mavi -->
+          <ellipse cx="130" cy="104" rx="52" ry="66" fill="#cfe4fb" opacity="0.32"/>
+          <!-- ışık saçakları (referanstaki alev/saç) -->
+          <g stroke="#dCEBFF" stroke-width="2.2" stroke-linecap="round" opacity="0.5" fill="none">
+            <path d="M96 46 q-10 -26 -4 -40"/><path d="M130 40 q0 -24 0 -38"/>
+            <path d="M164 46 q10 -26 4 -40"/><path d="M78 64 q-22 -18 -30 -30"/>
+            <path d="M182 64 q22 -18 30 -30"/><path d="M64 96 q-30 -6 -44 -10"/>
+            <path d="M196 96 q30 -6 44 -10"/><path d="M74 140 q-24 12 -34 26"/>
+            <path d="M186 140 q24 12 34 26"/>
+          </g>
+
+          <!-- kaşlar -->
+          <g id="ustadBrowL"><path d="M64 88 Q90 74 114 84" fill="none" stroke="#eaf4ff" stroke-width="3" stroke-linecap="round" opacity="0.75"/></g>
+          <g id="ustadBrowR"><path d="M146 84 Q170 74 196 88" fill="none" stroke="#eaf4ff" stroke-width="3" stroke-linecap="round" opacity="0.75"/></g>
+
+          <!-- burun (ışık-gölge) -->
+          <path d="M130 96 q-5 24 -3 34 q3 6 9 4" fill="none" stroke="#bcd8f5" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+
+          <!-- ağız -->
+          <path id="ustadMouth" d="M110 158 Q130 166 150 158" fill="none" stroke="#dCEBFF" stroke-width="2.4" stroke-linecap="round" opacity="0.7"/>
         </g>
 
-        <!-- kaşlar: ayrı gruplar, mimik için oynar -->
-        <g id="ustadBrowL">
-          <path d="M56 76 Q86 58 116 72" fill="none" stroke="#C9A84C" stroke-width="3.4" stroke-linecap="round"/>
+        <!-- parlayan boş gözler (sisin dışında, keskin) -->
+        <g filter="url(#ustadGlow)">
+          <ellipse id="ustadPupL" cx="100" cy="108" rx="12" ry="7" fill="url(#ustadEyeGlow)"/>
+          <ellipse id="ustadPupR" cx="160" cy="108" rx="12" ry="7" fill="url(#ustadEyeGlow)"/>
+          <circle cx="100" cy="108" r="3.4" fill="#ffffff"/>
+          <circle cx="160" cy="108" r="3.4" fill="#ffffff"/>
         </g>
-        <g id="ustadBrowR">
-          <path d="M144 72 Q174 58 204 76" fill="none" stroke="#C9A84C" stroke-width="3.4" stroke-linecap="round"/>
-        </g>
+        <!-- göz kırpma örtücüleri -->
+        <rect id="ustadLidL" x="86" y="99" width="28" height="0" fill="#0D0A06"/>
+        <rect id="ustadLidR" x="146" y="99" width="28" height="0" fill="#0D0A06"/>
 
-        <!-- gözler: badem, iri, boşlukta -->
-        <g id="ustadEyeL">
-          <path d="M60 100 Q88 78 116 100 Q88 121 60 100 Z" fill="#0D0A06" stroke="#C9A84C" stroke-width="1.9"/>
-          <circle id="ustadPupL" cx="88" cy="100" r="7.5" fill="#E8C96A"/>
-          <circle cx="91" cy="97" r="2.2" fill="#0D0A06" opacity="0.85"/>
-          <rect id="ustadLidL" x="58" y="78" width="60" height="0" fill="#0D0A06"/>
-          <path d="M60 100 Q88 78 116 100" fill="none" stroke="#C9A84C" stroke-width="1.9"/>
+        <!-- alında sekiz köşeli yıldız — soluk ışık -->
+        <g id="ustadStar" opacity="0.7" filter="url(#ustadGlow)">
+          <rect x="122" y="52" width="16" height="16" fill="none" stroke="#eaf4ff" stroke-width="1"/>
+          <rect x="122" y="52" width="16" height="16" fill="none" stroke="#eaf4ff" stroke-width="1" transform="rotate(45 130 60)"/>
         </g>
-        <g id="ustadEyeR">
-          <path d="M144 100 Q172 78 200 100 Q172 121 144 100 Z" fill="#0D0A06" stroke="#C9A84C" stroke-width="1.9"/>
-          <circle id="ustadPupR" cx="172" cy="100" r="7.5" fill="#E8C96A"/>
-          <circle cx="175" cy="97" r="2.2" fill="#0D0A06" opacity="0.85"/>
-          <rect id="ustadLidR" x="142" y="78" width="60" height="0" fill="#0D0A06"/>
-          <path d="M144 100 Q172 78 200 100" fill="none" stroke="#C9A84C" stroke-width="1.9"/>
-        </g>
-
-        <!-- alt kirpik vurgusu (mistik derinlik) -->
-        <path d="M74 112 q14 7 28 2 M158 114 q14 5 28 -2" fill="none" stroke="#8B6914" stroke-width="1" opacity="0.6"/>
-
-        <!-- ağız: tek hat, mimikle şekil değiştirir -->
-        <path id="ustadMouth" d="M104 156 Q130 165 156 156" fill="none" stroke="#C9A84C" stroke-width="2.4" stroke-linecap="round"/>
       </g>
     </svg>
     <div class="ustad-say">
@@ -2979,11 +3015,11 @@ function ustadSay(state) {
 // ---- MİMİK MOTORU ----
 // Kaşlar, gözkapakları ve ağız pozlarla oynar; süzülmeyle birleşince yüz canlanır.
 const ustadPoses = {
-  sakin:   { browL: 0,  browR: 0,  browTilt: 0,  lid: 0,  mouth: 'M104 156 Q130 165 156 156' },
-  merakli: { browL: -7, browR: -10, browTilt: -3, lid: 0,  mouth: 'M106 158 Q130 160 154 156' },
-  supheci: { browL: 3,  browR: -9, browTilt: 4,  lid: 7,  mouth: 'M106 158 Q130 156 154 160' },
-  memnun:  { browL: -4, browR: -4, browTilt: 0,  lid: 3,  mouth: 'M102 154 Q130 170 158 154' },
-  dalgin:  { browL: 2,  browR: 2,  browTilt: 0,  lid: 9,  mouth: 'M108 158 Q130 161 152 158' },
+  sakin:   { browL: 0,  browR: 0,  browTilt: 0,  lid: 0,  mouth: 'M110 158 Q130 166 150 158' },
+  merakli: { browL: -6, browR: -9, browTilt: -3, lid: 0,  mouth: 'M112 159 Q130 161 148 158' },
+  supheci: { browL: 3,  browR: -8, browTilt: 4,  lid: 5,  mouth: 'M112 159 Q130 157 148 161' },
+  memnun:  { browL: -4, browR: -4, browTilt: 0,  lid: 2,  mouth: 'M108 156 Q130 170 152 156' },
+  dalgin:  { browL: 2,  browR: 2,  browTilt: 0,  lid: 7,  mouth: 'M112 159 Q130 162 148 159' },
 };
 
 function ustadExpress(poz) {
@@ -3043,8 +3079,11 @@ let ustadBlinking = false;
     fy = Math.cos(t * 0.5) * 0.22;
     const nx = tx * 0.7 + fx * 0.5;
     const ny = ty * 0.7 + fy * 0.5;
-    pL.setAttribute('cx', 88 + nx * 9); pL.setAttribute('cy', 100 + ny * 5);
-    pR.setAttribute('cx', 172 + nx * 9); pR.setAttribute('cy', 100 + ny * 5);
+    pL.setAttribute('cx', 100 + nx * 8); pL.setAttribute('cy', 108 + ny * 4);
+    pR.setAttribute('cx', 160 + nx * 8); pR.setAttribute('cy', 108 + ny * 4);
+    // gözler hafifçe nefes alsın (ruh titreşimi)
+    const g = 0.85 + Math.sin(t * 2.1) * 0.15;
+    pL.setAttribute('opacity', g); pR.setAttribute('opacity', g);
     sway.setAttribute('transform',
       `translate(${nx * 7 + Math.sin(t * 0.9) * 2}, ${ny * 4 + Math.sin(t * 1.3) * 2.5}) rotate(${nx * 1.6})`);
   }, 40);
@@ -3057,7 +3096,7 @@ let ustadBlinking = false;
     let h = ustadBaseLid, dir = 1;
     const iv = setInterval(() => {
       h += dir * 6;
-      if (h >= 24) dir = -1;
+      if (h >= 16) dir = -1;
       if (h <= ustadBaseLid && dir === -1) {
         clearInterval(iv); h = ustadBaseLid; ustadBlinking = false;
       }
@@ -3093,7 +3132,7 @@ let ustadBlinking = false;
       let open = false;
       talk = setInterval(() => {   // konuşurken ağız aç-kapa
         open = !open;
-        mouth.setAttribute('d', open ? 'M104 156 Q130 174 156 156' : 'M104 156 Q130 163 156 156');
+        mouth.setAttribute('d', open ? 'M110 158 Q130 174 150 158' : 'M110 158 Q130 163 150 158');
       }, 170);
     };
     u.onend = () => { clearInterval(talk); ustadExpress('memnun'); };
