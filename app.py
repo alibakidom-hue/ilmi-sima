@@ -1058,7 +1058,7 @@ def gelecek():
             )
             prompt += "\n".join(blok)
 
-        result = gemini_json(parts + [prompt], GELECEK_TOOL["input_schema"], 5000)
+        result = gemini_json(parts + [prompt], GELECEK_TOOL["input_schema"], 3600)
         if result is None:
             return jsonify({"error": "Kıraat üretilemedi, tekrar dene."}), 502
         return jsonify(result)
