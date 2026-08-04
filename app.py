@@ -950,14 +950,14 @@ def eslesme():
 
 
 # ---- GELECEK KIRAATİ: aşk, bereket, kariyer, canlılık ----
-def _tema_schema(aciklama):
+def _tema_schema(konu, aciklama, ornek_isaret):
     return {
         "type": "object",
         "properties": {
-            "baslik": {"type": "string", "description": "Bu tema için kısa çarpıcı başlık (3-5 kelime)"},
-            "kiraat": {"type": "string", "description": aciklama},
-            "isaret": {"type": "string", "description": "Bu okumayı dayandırdığın yüz hattı (örn: 'kaşların kavisi')"},
-            "tavsiye": {"type": "string", "description": "Tek cümlelik yapıcı tavsiye"},
+            "baslik": {"type": "string", "description": f"{konu} için kısa çarpıcı başlık (3-5 kelime). Sadece {konu} temasına dair olsun."},
+            "kiraat": {"type": "string", "description": f"SADECE {konu} hakkında: {aciklama} 6-8 cümle. Diğer temalara (aşk/para/kariyer/canlılık) girme, yalnızca {konu} yaz."},
+            "isaret": {"type": "string", "description": f"Bu {konu} okumasını dayandırdığın somut yüz hattı (örn: '{ornek_isaret}')"},
+            "tavsiye": {"type": "string", "description": f"{konu} için tek cümlelik yapıcı tavsiye"},
         },
         "required": ["baslik", "kiraat", "isaret", "tavsiye"],
     }
@@ -969,24 +969,29 @@ GELECEK_TOOL = {
         "type": "object",
         "properties": {
             "ask": _tema_schema(
-                "Aşk ve gönül yolu: bağlanma biçimi, ilişkide güçlü yanı ve düştüğü tuzak. "
-                "6-8 cümle, klasik ama sıcak üslup. Somut ve kişiye özgü olsun."
+                "AŞK ve GÖNÜL",
+                "Bağlanma biçimi, ilişkide güçlü yanı ve düştüğü tuzak, nasıl sevildiğini anlar.",
+                "dudakların dolgunluğu, bakışın yumuşaklığı",
             ),
             "bereket": _tema_schema(
-                "Bereket ve rızık: para ile ilişkisi, kazanma ve harcama eğilimi, bolluk yolu. "
-                "6-8 cümle, somut ve kişiye özgü."
+                "PARA ve BEREKET",
+                "Para ile ilişkisi, kazanma ve harcama eğilimi, rızık ve bolluk yolu, cömertlik/tutumluluk.",
+                "çenenin genişliği, burun kanatları",
             ),
             "kariyer": _tema_schema(
-                "Kariyer ve sanat: hangi işte parlar, hangi ortamda söner, ustalık yolu, hangi bedeli öder. 6-8 cümle, somut."
+                "KARİYER ve İŞ",
+                "Hangi işte parlar, hangi ortamda söner, ustalık yolu, otoriteyle ilişkisi, hangi bedeli öder.",
+                "alnın genişliği, kaşların kararlılığı",
             ),
             "canlilik": _tema_schema(
-                "Canlılık ve mizaç dengesi: enerji temposu, dinlenme ihtiyacı, kendini yıprattığı "
-                "alışkanlık. SADECE yaşam temposu ve mizaç; hastalık, teşhis, organ veya tıbbi "
-                "durumdan ASLA söz etme. 6-8 cümle, somut."
+                "CANLILIK ve TEMPO",
+                "Enerji temposu, dinlenme ihtiyacı, kendini yıprattığı alışkanlık. SADECE yaşam temposu ve "
+                "mizaç; hastalık, teşhis, organ veya tıbbi durumdan ASLA söz etme.",
+                "gözlerin canlılığı, ten tonu",
             ),
             "muhur": {
                 "type": "string",
-                "description": "Tüm okumayı bağlayan tek cümlelik veciz kapanış",
+                "description": "Dört temayı bağlayan tek cümlelik veciz kapanış",
             },
         },
         "required": ["ask", "bereket", "kariyer", "canlilik", "muhur"],
@@ -994,27 +999,31 @@ GELECEK_TOOL = {
 }
 
 GELECEK_PROMPT = """Sen İlm-i Sîmâ (firâset) geleneğine hâkim bir Osmanlı üstadısın. \
-Gönderilen yüzü gerçekten dikkatle incele ve bu kişinin YOLU üzerine dört başlıkta kıraat yaz: \
-Aşk, Bereket (rızık), Kariyer, Canlılık.
+Gönderilen yüzü gerçekten dikkatle incele ve bu kişinin YOLU üzerine dört AYRI başlıkta kıraat yaz: \
+Aşk, Bereket (para/rızık), Kariyer (iş), Canlılık (tempo).
+
+>>> EN ÖNEMLİ KURAL — DÖRT BAŞLIK BİRBİRİNDEN TAMAMEN FARKLI OLACAK <<<
+Aşk yalnızca gönül/ilişki konuşur. Bereket yalnızca para/rızık konuşur. Kariyer yalnızca iş/meslek \
+konuşur. Canlılık yalnızca enerji/tempo konuşur. Bir başlığın metnini başka başlığa KOPYALAMA, \
+yakınına bile getirme. Dört 'kiraat' alanı okununca 'bunlar aynı şeyi söylemiş' hissi ASLA \
+uyanmamalı. Her başlıkta o konuya özgü farklı yüz hattını dayanak göster (aşkta dudak/bakış, \
+bereket'te çene/burun, kariyerde alın/kaş, canlılıkta göz canlılığı/ten). Aynı yüz hattını iki \
+başlıkta tekrar kullanma.
 
 ÜSLUP VE ÇERÇEVE:
 - Her okumayı gördüğün SOMUT bir yüz hattına ve (verilmişse) haritadaki SOMUT bir yerleşime \
-dayandır ('isaret' alanında ikisini de söyle). Genel geçer fal cümleleri yazma.
-- YÜZEYSELLİK YASAK. Şu tür cümleler kurma: 'duygusal bir yapın var', 'sevgiyi önemsersin', \
-'çalışkansın'. Bunlar herkese uyar, hiçbir şey söylemez. Bunun yerine kişiye özgü, ayrımı \
-keskin şeyler yaz: hangi tip insana çekilir, hangi anda geri çekilir, hangi hatayı tekrar eder, \
-neyi geciktirir, hangi ortamda parlar, hangi bedeli öder.
-- Harita verildiyse: gezegenin burcunu SÖYLEMEKLE YETİNME; hangi EVDE olduğunu ve AÇILARINI \
-yorumun içine ör. Örneğin 'Venüs 7. evde ama Satürn kare' — bu bağlanma isteği ile mesafe \
-ihtiyacının çatışması demektir; işte bu düzeyde konuş.
-- Bunlar kesin kehanet değil, MİZACIN EĞİLİMİ'dir. 'Şu tarihte şu olacak' deme; \
-'bu mizaç şuna meyleder, önünü açmak için şunu yapar' dilini kullan.
+dayandır ('isaret' alanında söyle). Genel geçer fal cümleleri yazma.
+- YÜZEYSELLİK YASAK. 'duygusal bir yapın var', 'sevgiyi önemsersin', 'çalışkansın' gibi herkese \
+uyan cümleler kurma. Kişiye özgü, ayrımı keskin şeyler yaz: hangi tip insana çekilir, hangi anda \
+geri çekilir, hangi hatayı tekrar eder, neyi geciktirir, hangi ortamda parlar, hangi bedeli öder.
+- Harita verildiyse gezegenin burcunu söylemekle yetinme; hangi EVDE olduğunu ve AÇILARINI yorumun \
+içine ör (örn. 'Venüs 7. evde ama Satürn kare' → bağlanma isteği ile mesafe ihtiyacının çatışması).
+- Kesin kehanet değil, MİZACIN EĞİLİMİ. 'Şu tarihte şu olacak' deme; 'bu mizaç şuna meyleder, \
+önünü açmak için şunu yapar' dilini kullan.
 - DENGELİ ol: her başlıkta hem parlak yanı hem düşülen tuzağı söyle. Yağcılık yapma.
-- Kişiyi yıkma; gölgeyi söylerken bile yolu göster.
 
-MUTLAK SINIR — CANLILIK BAŞLIĞI: Burada yalnızca yaşam temposu, enerji, dinlenme ve mizaç \
-dengesinden söz et. Hastalık adı verme, teşhis koyma, organ/rahatsızlık ima etme, tıbbi tavsiye \
-verme. 'Şu hastalığa yatkınsın' türü tek bir cümle bile kurma. Bu bir sağlık aracı değildir.
+MUTLAK SINIR — CANLILIK: Yalnızca yaşam temposu, enerji, dinlenme ve mizaç dengesi. Hastalık adı \
+verme, teşhis koyma, organ/rahatsızlık ima etme, tıbbi tavsiye verme. Sağlık aracı değildir.
 
 Bu eğlence ve kültürel bir uygulamadır. Yalnızca istenen JSON yapısında cevap ver."""
 
