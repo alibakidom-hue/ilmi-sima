@@ -561,7 +561,7 @@ KARMA_TOOL = {
             },
             "kiraat": {
                 "type": "string",
-                "description": "Bütünsel karma kıraati, 8-10 cümle, klasik Osmanlı üslubu ama anlaşılır. Yüzle haritayı iç içe geçir; genel geçer değil, bu haritaya özgü yaz.",
+                "description": "Bütünsel karma kıraati, 6-7 cümle, klasik Osmanlı üslubu ama anlaşılır. Yüzle haritayı iç içe geçir; genel geçer değil, bu haritaya özgü yaz.",
             },
             "belirgin_yerlesimler": {
                 "type": "array",
@@ -570,7 +570,7 @@ KARMA_TOOL = {
                     "type": "object",
                     "properties": {
                         "yerlesim": {"type": "string", "description": "Teknik yerleşim (örn: 'Ay 12. evde, Satürn ile kare')"},
-                        "anlami": {"type": "string", "description": "Bu yerleşimin bu kişide somut olarak neye dönüştüğü, 2-3 cümle"},
+                        "anlami": {"type": "string", "description": "Bu yerleşimin bu kişide somut olarak neye dönüştüğü, 2 cümle"},
                     },
                     "required": ["yerlesim", "anlami"],
                 },
@@ -582,7 +582,7 @@ KARMA_TOOL = {
                     "type": "object",
                     "properties": {
                         "alan": {"type": "string", "description": "Alan adı (yukarıdaki altıdan biri)"},
-                        "yorum": {"type": "string", "description": "Bu alandaki eğilim, 3-4 cümle. Hem imkânı hem zorluğu söyle."},
+                        "yorum": {"type": "string", "description": "Bu alandaki eğilim, 2-3 cümle. Hem imkânı hem zorluğu söyle. Özlü yaz, dolgu cümle kurma."},
                         "dayanak": {"type": "string", "description": "Bu yorumu dayandırdığın SOMUT yerleşim (örn: 'Venüs 8. evde, Plüton ile kavuşum')"},
                     },
                     "required": ["alan", "yorum", "dayanak"],
@@ -618,7 +618,12 @@ KARMA_TOOL = {
 def karma():
     try:
         data = request.get_json()
-        karma_parts, karma_angles = face_parts(data)
+        # Karma'nın ağırlığı haritada; yüz için tek (ön) görsel yeterli.
+        # Çok açılı gönderim burada bellek ve süre maliyetini gereksiz artırıyor.
+        karma_parts, karma_angles = face_parts({
+            "image": data.get("image"),
+            "mediaType": data.get("mediaType", "image/jpeg"),
+        })
         birth = data.get("birth", {})  # {year, month, day, hour}
 
         if not karma_parts:
@@ -692,7 +697,7 @@ gibi yargı DEĞİL. Yalnızca istenen JSON yapısında cevap ver."""
         result = gemini_json(
             karma_parts + [karma_prompt + (MULTI_ANGLE_NOTE if karma_angles > 1 else "")],
             KARMA_TOOL["input_schema"],
-            7000,
+            4500,
         )
 
         if result is None:
