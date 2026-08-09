@@ -434,47 +434,36 @@ oranlar için. Okumanı tüm açılardan gördüklerini birleştirerek yap ve m�
 profilden gelen bilgiyi de kullan."""
 
 
-SIMA_PROMPT = """Sen İlm-i Sîmâ (fizyonomi) uzmanısın. İlm-i Sîmâ, İslam ve Osmanlı \
-geleneğinde yüz hatlarından kişinin mizacını, ahlakını ve karakterini okuma ilmidir. \
-İbn Arabî, Fahreddîn-i Râzî ve Osmanlı âlimlerinin geleneksel yüz okuma metodolojisini kullanıyorsun.
+SIMA_PROMPT = """Sen İlm-i Sîmâ (fizyonomi) ve İlm-i Kef (el okuma) geleneğine hâkim bir \
+Osmanlı üstadısın. Yüz hatlarından ve elden kişinin mizacını ve yolunun eğilimini okursun.
 
-Gönderilen fotoğraftaki kişinin yüzünü GERÇEKTEN dikkatle, ayrıntılı incele.
+Gönderilen yüz fotoğraf(lar)ını GERÇEKTEN dikkatle incele. El fotoğrafı da verildiyse avuç \
+içini ciddiyetle incele.
 
-ŞU ALTI OKUMA YERİNİN HER BİRİ İÇİN AYRI bir özellik (trait) üret (toplam 6 trait):
-1. ALIN (الجَبْهَة): genişliği, yüksekliği, çıkıntısı, varsa çizgileri — firâsetin en önemli yeri, ayrıntılı oku.
-2. KAŞLAR (الحَواجِب): kalınlığı, çatıklığı, kavisi, birbirine yakınlığı.
-3. GÖZLER (العُيُون): biçimi, büyüklüğü, bakışın derinliği/canlılığı.
-4. BURUN (الأَنْف): hattı, kemeri, ucu, genişliği.
-5. AĞIZ VE DUDAKLAR (الشِّفَاه): dudak dolgunluğu, ağız hattı, kapanışı.
-6. ÇENE VE YÜZ HATTI (الذَّقَن): çenenin gücü/biçimi, yüzün genel simetrisi ve oranları.
+ŞU ALTI OKUMA YERİ İÇİN BİRER trait üret: 1. ALIN (الجَبْهَة) 2. KAŞLAR (الحَواجِب) \
+3. GÖZLER (العُيُون) 4. BURUN (الأَنْف) 5. AĞIZ VE DUDAKLAR (الشِّفَاه) 6. ÇENE (الذَّقَن).
+'name' Türkçe adı, 'arabic' Arapça karşılığı olsun.
 
-Her trait'in 'name' alanı yukarıdaki Türkçe adı, 'arabic' alanı yanındaki Arapça karşılığı olsun.
+KISALIK KURALI — ÇOK ÖNEMLİ: Her trait EN FAZLA 2-3 cümle. Uzun paragraf YASAK. \
+İlk cümle gördüğün hattı ve mizacını söyler (somut tarif içinde), SON cümle geleceğe bakar: \
+'bu hat seni ileride ...e taşır' ya da 'bunu törpülemende fayda var' dilinde. \
+Genel geçer cümle ('zekisin', 'duygusalsın') yasak; ayrımı keskin yaz.
 
-ÖNEMLİ:
-- Yorumlar gerçekten gördüğün yüz hatlarına dayansın, genel geçer olmasın.
-- YÜZEYSELLİK YASAK. Her özellikte önce GÖRDÜĞÜN ŞEYİ tarif et (örn. 'alın geniş ve hafif \
-çıkık, saç çizgisi köşeli'), SONRA onu yorumla. Tarif etmeden yorum yapma — okuyan kişi \
-'bunu benim yüzümden mi çıkardı, herkese mi söylüyor' diye ayırt edebilmeli.
-- 'Zeki birisin', 'duygusalsın', 'kararlısın' gibi herkese uyan cümleler kurma. Bunun yerine \
-ayrımı keskin şeyler yaz: hangi durumda ne yapar, neyi erteler, hangi baskı altında çatlar, \
-neyle kolay ikna olur, neyi asla affetmez.
-- Her özellik 4-6 cümle olsun; tek cümlelik geçiştirme yok.
-- Klasik firâsetin MİZAÇ çerçevesini kullan (safravî/ateşli, demevî/kanlı, sevdavî/toprak, \
-balgamî/sulu) ve bu kişinin hangi mizaca meylettiğini 'overall' bölümünde bağla.
-- Özellikler arası BAĞ kur: bir hattın söylediğini başka bir hat destekliyor mu, yoksa \
-çelişiyor mu? Çelişki varsa onu söyle — asıl derinlik oradadır.
-- DENGELİ ol: her özellikte hem güçlü yönü hem de zaafı/gölge tarafı belirt. İlm-i sîmâ \
-salt övgü değildir; bir hattın hem meziyetini hem de dizginlenmezse nereye kayabileceğini söyler. \
-En az iki özellikte gerçek bir zaaf/gerilim/uyarı bulunsun. Yağcılık yapma, dürüst ama yapıcı ol.
-- Bu eğlence ve kültürel bir uygulamadır; tıbbi/kesin iddialarda bulunma, klasik üslupta yorumla. \
-Kişiyi yıkmadan, ama gerçekçi şekilde gölge yönleri de göster.
-- Yorumunu yalnızca istenen JSON yapısında ver, başka açıklama ekleme."""
+EL OKUMA (el fotoğrafı verildiyse): Elin tipini söyle ve ÜÇ ANA ÇİZGİYİ oku — Kalp Çizgisi \
+(duygu yolu), Akıl Çizgisi (zihin yolu), Hayat Çizgisi (canlılık yolu). Fotoğrafta GERÇEKTEN \
+görünene dayan; bir çizgi net seçilemiyorsa bunu dürüstçe söyle, uydurma. Her çizgi 2 cümle: \
+gözlem + geleceğe dönük eğilim. El fotoğrafı YOKSA 'el' alanlarını boş string ve boş listeyle doldur.
+
+DENGE: Hem parlak yönü hem gölgeyi söyle; gölgeyi yapıcı gelecek diliyle ver ('çabuk \
+parlayabilirsin — ileride törpülemende fayda var' gibi). Kesin kehanet yok ('şu tarihte şu \
+olacak' deme), eğilim dili var. Bu eğlence ve kültürel bir uygulamadır; tıbbi iddia yasak. \
+Yalnızca istenen JSON yapısında cevap ver."""
 
 
 # Tool use: çıktının her zaman geçerli yapıda gelmesini garantiler
 SIMA_TOOL = {
     "name": "sima_analizi",
-    "description": "İlm-i sîmâ yüz analizini yapılandırılmış biçimde döndürür.",
+    "description": "İlm-i sîmâ yüz ve el analizini yapılandırılmış biçimde döndürür.",
     "input_schema": {
         "type": "object",
         "properties": {
@@ -485,24 +474,52 @@ SIMA_TOOL = {
             "dominantTraitTR": {"type": "string", "description": "Türkçe karşılığı"},
             "traits": {
                 "type": "array",
-                "description": "Beş yüz özelliği analizi",
+                "description": "Altı okuma yeri (Alın, Kaşlar, Gözler, Burun, Ağız/Dudaklar, Çene)",
                 "items": {
                     "type": "object",
                     "properties": {
                         "name": {"type": "string"},
                         "arabic": {"type": "string"},
-                        "description": {"type": "string"},
+                        "description": {
+                            "type": "string",
+                            "description": "KISA: en fazla 2-3 cümle. İlk cümle hattın söylediği mizaç, "
+                                           "SON cümle geleceğe dönük eğilim ('bu hat seni ileride ...e "
+                                           "taşır / ...den sakınmanda fayda var' dilinde).",
+                        },
                         "intensity": {"type": "integer"},
                     },
                     "required": ["name", "arabic", "description", "intensity"],
                 },
             },
+            "el": {
+                "type": "object",
+                "description": "SADECE el fotoğrafı verildiyse doldur; yoksa alanları boş string bırak.",
+                "properties": {
+                    "el_tipi": {"type": "string", "description": "Elin klasik tipi (örn: 'Ateş eli')"},
+                    "cizgiler": {
+                        "type": "array",
+                        "description": "Avuç çizgilerinin okunması: Kalp, Akıl (baş) ve Hayat çizgisi. "
+                                       "Fotoğrafta gerçekten görüneni oku; net görünmüyorsa söyle.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "ad": {"type": "string", "description": "Kalp Çizgisi / Akıl Çizgisi / Hayat Çizgisi"},
+                                "yorum": {"type": "string", "description": "2 cümle: gözlem + geleceğe dönük eğilim"},
+                            },
+                            "required": ["ad", "yorum"],
+                        },
+                    },
+                    "kiraat": {"type": "string", "description": "Elin bütünsel kıraati, 2-3 cümle, geleceğe dönük"},
+                },
+                "required": ["el_tipi", "cizgiler", "kiraat"],
+            },
             "overall": {
                 "type": "string",
-                "description": "Bütünsel kıraat, 4-5 cümle, klasik Osmanlı üslubu",
+                "description": "Bütünsel kıraat, 3-4 cümle, klasik Osmanlı üslubu; yüz (ve varsa el) "
+                               "birlikte, geleceğe dönük eğilim diliyle kapanır.",
             },
         },
-        "required": ["dominantTrait", "dominantTraitTR", "traits", "overall"],
+        "required": ["dominantTrait", "dominantTraitTR", "traits", "el", "overall"],
     },
 }
 
@@ -521,8 +538,14 @@ def analyze():
         if not parts:
             return jsonify({"error": "Görsel bulunamadı"}), 400
 
+        # El fotoğrafı (isteğe bağlı) — avuç içi çizgi okuması için
+        hand = data.get("imageHand")
+        if hand:
+            parts += ["=== EL (avuç içi — çizgi okuması için) ===",
+                      image_part(hand, data.get("mediaTypeHand", "image/jpeg"))]
+
         prompt = SIMA_PROMPT + (MULTI_ANGLE_NOTE if n_angles > 1 else "")
-        result = gemini_json(parts + [prompt], SIMA_TOOL["input_schema"], 4000)
+        result = gemini_json(parts + [prompt], SIMA_TOOL["input_schema"], 3400)
 
         if result is None:
             return jsonify({"error": "Model analiz üretmedi, tekrar dene."}), 502
@@ -561,11 +584,11 @@ KARMA_TOOL = {
             },
             "kiraat": {
                 "type": "string",
-                "description": "Bütünsel karma kıraati, 6-7 cümle, klasik Osmanlı üslubu ama anlaşılır. Yüzle haritayı iç içe geçir; genel geçer değil, bu haritaya özgü yaz.",
+                "description": "Bütünsel karma kıraati, 4-5 cümle, klasik Osmanlı üslubu ama anlaşılır. Yüzle haritayı iç içe geçir; genel geçer değil, bu haritaya özgü yaz.",
             },
             "belirgin_yerlesimler": {
                 "type": "array",
-                "description": "Bu haritanın EN ÇARPICI 3-4 imzası (harita yöneticisi, en dar açı, bir evde yığılma, baskın/eksik element, retro gezegen gibi). Sıradan olanı değil, bu haritayı DİĞERLERİNDEN AYIRANI seç.",
+                "description": "Bu haritanın EN ÇARPICI 2-3 imzası (harita yöneticisi, en dar açı, bir evde yığılma, baskın/eksik element, retro gezegen gibi). Sıradan olanı değil, bu haritayı DİĞERLERİNDEN AYIRANI seç.",
                 "items": {
                     "type": "object",
                     "properties": {
@@ -577,7 +600,7 @@ KARMA_TOOL = {
             },
             "hayat_alanlari": {
                 "type": "array",
-                "description": "Haritanın konu konu okunuşu. ŞU ALTI ALANIN HER BİRİ İÇİN birer madde yaz: Aşk ve İlişkiler (5/7. ev, Venüs, Ay), İş ve Kariyer (6/10. ev, MC, Satürn), Para ve Bereket (2/8. ev, Jüpiter, Venüs), Aile ve Kökler (4. ev, Ay, IC), Zihin ve Öğrenme (3/9. ev, Merkür), İç Dünya ve Gölge (12. ev, Plüton, Neptün).",
+                "description": "Haritanın konu konu okunuşu. ŞU DÖRT ALANIN HER BİRİ İÇİN birer madde yaz: Aşk (5/7. ev, Venüs, Ay), Para (2/8. ev, Jüpiter, Venüs), Kariyer (6/10. ev, MC, Satürn), Canlılık (1. ev, Mars, Güneş — SADECE enerji/tempo, tıbbi iddia YASAK). Her yorum geleceğe dönük eğilim diliyle bitsin.",
                 "items": {
                     "type": "object",
                     "properties": {
@@ -590,12 +613,12 @@ KARMA_TOOL = {
             },
             "guclu_yanlar": {
                 "type": "array",
-                "description": "3-4 güçlü/parlak yan. Her maddede parantez içinde dayanağını yaz (örn: 'Baskı altında soğukkanlı kalır (Satürn 1. evde)').",
+                "description": "3 güçlü yan, geleceğe dönük dille: '... — bu seni ileride ...de öne çıkarır'. Parantez içinde dayanak (örn: Satürn 1. evde).",
                 "items": {"type": "string"},
             },
             "golge_yanlar": {
                 "type": "array",
-                "description": "3-4 zaaf/gölge yan, dürüst ama kırıcı değil. Her maddede parantez içinde dayanağını yaz (örn: 'Yakınlıkta kontrolü bırakmakta zorlanır (Ay-Plüton karesi)').",
+                "description": "3 gölge yan, dürüst ama YAPICI GELECEK diliyle: 'çabuk parlayabilirsin — bunu ileride törpülemende fayda var' kalıbında. Parantez içinde dayanak.",
                 "items": {"type": "string"},
             },
             "dikkat_edilecekler": {
@@ -686,10 +709,15 @@ Bunun yerine ayrımı keskin şeyler yaz: hangi durumda ne yapar, neyi erteler, 
 çekingen) bunu söyle. Asıl derinlik çelişkidedir. Aynısını yüz ile harita arasında da yap.
 - Boş evleri sorun sayma; o evin başlangıç burcunun yöneticisine bak.
 
-DENGE: sadece güçlü yönleri değil, zaafları, iç çelişkileri ve gerilimleri de dürüstçe yaz. \
-Yağcılık yapma; klasik müneccim üslubunda hem meziyeti hem gölgeyi söyle. Kişiyi yıkmadan ama \
-gerçekçi yaz. Bu bir eğlence ve kültürel uygulamadır; kesin kehanet ('şu tarihte şu olacak') \
-ve tıbbi iddia yok — eğilim dilini kullan.
+GELECEK DİLİ — HER BÖLÜMDE: Bu okuma geçmişi değil YOLU anlatır. Güçlü yanlar 'bu seni \
+ileride ...de öne çıkarır', gölge yanlar 'çabuk parlayabilirsin — bunu ileride törpülemende \
+fayda var' kalıbında yazılır. Dört hayat alanı da eğilim + ileriye dönük tavsiyeyle biter.
+
+KISALIK: Uzun paragraf yok. Kiraat 4-5 cümle, her alan 2-3 cümle, maddeler tek cümle. \
+Okuyan yorulmamalı.
+
+DENGE: Yağcılık yapma; hem meziyeti hem gölgeyi söyle ama kişiyi yıkma. Kesin kehanet \
+('şu tarihte şu olacak') ve tıbbi iddia YASAK — Canlılık alanı yalnızca enerji/tempo konuşur.
 
 'dikkat_edilecekler' alanı: bu mizaçla daha iyi anlaşmak için yapıcı notlar — 'şu kişiden sakın' \
 gibi yargı DEĞİL. Yalnızca istenen JSON yapısında cevap ver."""
