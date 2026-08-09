@@ -595,6 +595,20 @@
     filter: sepia(0.15);
   }
   .angle-thumb.show { display: block; }
+  .angle-lines {
+    position: absolute;
+    inset: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .el-section {
+    border: 1px solid rgba(201,168,76,0.15);
+    border-radius: 4px;
+    padding: 16px;
+    margin: 4px 0 20px;
+    background: rgba(201,168,76,0.03);
+  }
   .angles-hint {
     font-size: 0.72rem;
     color: var(--gold-dim);
@@ -1469,8 +1483,17 @@
         <img class="angle-thumb" id="angleThumbL" alt="">
         <input type="file" id="angleFileL" accept="image/*" style="display:none">
       </div>
+      <div class="angle-slot" id="angleSlotH">
+        <div class="angle-inner">
+          <div class="angle-icon">✋</div>
+          <div class="angle-text">El (avuç içi)</div>
+        </div>
+        <canvas class="angle-lines" id="handLines"></canvas>
+        <img class="angle-thumb" id="angleThumbH" alt="">
+        <input type="file" id="angleFileH" accept="image/*" style="display:none">
+      </div>
     </div>
-    <div class="angles-hint">Burun hattı, alın eğimi ve çene ancak yandan okunur.</div>
+    <div class="angles-hint">Profiller burun ve çeneyi, avuç içi çizgileri okutur.</div>
   </div>
 
   <!-- SÎMÂ EŞLEŞMESİ modu -->
@@ -1576,6 +1599,13 @@
 
     <div class="traits-grid" id="traitsGrid"></div>
 
+    <!-- El sîması sonucu (el yüklendiyse) -->
+    <div class="el-section" id="elSection" style="display:none">
+      <div class="alan-baslik">✋ El Kıraati — <span id="elTipi2"></span></div>
+      <div id="elCizgiler"></div>
+      <div class="overall-text" id="elKiraat2" style="font-style:italic"></div>
+    </div>
+
     <div class="overall-section">
       <div class="overall-title">Genel Kıraat</div>
       <div class="overall-text" id="overallText"></div>
@@ -1617,49 +1647,6 @@
       <div class="overall-section">
         <div class="overall-title">Sîmâ vü Nücûm</div>
         <div class="overall-text" id="karmaText"></div>
-      </div>
-    </div>
-
-    <!-- GELECEK KIRAATİ katmanı -->
-    <div class="karma-invite" id="gelecekInvite">
-      <div class="karma-invite-title">✦ Asıl Merak Ettiğin ✦</div>
-      <div class="karma-invite-text">Mizacını gördün — peki yolun? Aşkın nereye akıyor, bereketin hangi kapıdan girecek, hangi işte parlayacaksın? Sîmân söylesin.</div>
-      <button class="karma-toggle-btn" id="gelecekBtn">Yolumu Oku</button>
-    </div>
-
-    <div class="gelecek-result" id="gelecekResult">
-      <div class="karma-result-header">
-        <div class="result-label">Yol Kıraati</div>
-      </div>
-      <div class="gelecek-tabs" id="gelecekTabs">
-        <button class="gelecek-tab active" data-tema="ask">Aşk</button>
-        <button class="gelecek-tab" data-tema="bereket">Bereket</button>
-        <button class="gelecek-tab" data-tema="kariyer">Kariyer</button>
-        <button class="gelecek-tab" data-tema="canlilik">Canlılık</button>
-      </div>
-      <div class="gelecek-panel" id="gelecekPanel"></div>
-      <div class="gelecek-muhur" id="gelecekMuhur"></div>
-      <div class="gelecek-not">Bu kıraat mizacın eğilimini anlatır, kesin kehanet değildir. Canlılık bölümü tıbbi tavsiye yerine geçmez.</div>
-    </div>
-
-    <!-- EL SÎMASI katmanı -->
-    <div class="karma-invite" id="elInvite">
-      <div class="karma-invite-title">✦ El Sîmanı da Oku ✦</div>
-      <div class="karma-invite-text">Firâsette elin şekli de bir işarettir. El fotoğrafını ekle, parmakların ve avucun da konuşsun.</div>
-      <button class="karma-toggle-btn" id="elToggleBtn">El Fotoğrafı Ekle</button>
-      <input type="file" id="elFileInput" accept="image/*" style="display:none">
-    </div>
-
-    <div class="el-result" id="elResult">
-      <div class="karma-result-header">
-        <div class="result-label">El Sîması</div>
-        <div class="karma-title" id="elTipi"></div>
-      </div>
-      <img class="el-preview" id="elPreview" alt="El görseli">
-      <div class="briefing" id="elOzellikler"></div>
-      <div class="overall-section">
-        <div class="overall-title">El Kıraati</div>
-        <div class="overall-text" id="elKiraat"></div>
       </div>
     </div>
 
@@ -2049,6 +2036,7 @@ function facePayload(extra) {
   const p = { image: imageBase64, mediaType: imageMediaType };
   if (angleRightB64) { p.imageRight = angleRightB64; p.mediaTypeRight = 'image/jpeg'; }
   if (angleLeftB64)  { p.imageLeft  = angleLeftB64;  p.mediaTypeLeft  = 'image/jpeg'; }
+  if (angleHandB64)  { p.imageHand  = angleHandB64;  p.mediaTypeHand  = 'image/jpeg'; }
   return Object.assign(p, extra || {});
 }
 
@@ -2084,6 +2072,87 @@ function setupAngle(slotId, fileId, thumbId, side) {
 }
 setupAngle('angleSlotR', 'angleFileR', 'angleThumbR', 'R');
 setupAngle('angleSlotL', 'angleFileL', 'angleThumbL', 'L');
+
+// ---- EL SLOTU + avuç çizgisi animasyonu ----
+let angleHandB64 = null;
+let handLineAnim = null;
+
+document.getElementById('angleSlotH').addEventListener('click', () =>
+  document.getElementById('angleFileH').click());
+document.getElementById('angleFileH').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const tmp = new Image();
+    tmp.onload = () => {
+      const maxDim = 1280;   // çizgiler ince — yüksek çözünürlük şart
+      let w = tmp.width, h = tmp.height;
+      if (w > h && w > maxDim) { h = h * maxDim / w; w = maxDim; }
+      else if (h > maxDim) { w = w * maxDim / h; h = maxDim; }
+      const cn = document.createElement('canvas');
+      cn.width = w; cn.height = h;
+      cn.getContext('2d').drawImage(tmp, 0, 0, w, h);
+      const jpeg = cn.toDataURL('image/jpeg', 0.92);
+      angleHandB64 = jpeg.split(',')[1];
+      const thumb = document.getElementById('angleThumbH');
+      thumb.src = jpeg; thumb.classList.add('show');
+      document.getElementById('angleSlotH').classList.add('filled');
+      startHandLines();
+    };
+    tmp.src = ev.target.result;
+  };
+  reader.readAsDataURL(f);
+});
+
+// Avuç üzerinde akan altın çizgiler (Kalp/Akıl/Hayat — dekoratif)
+function startHandLines() {
+  const cv = document.getElementById('handLines');
+  const slot = document.getElementById('angleSlotH');
+  const r = slot.getBoundingClientRect();
+  cv.width = r.width; cv.height = r.height;
+  const ctx = cv.getContext('2d');
+  const W = r.width, H = r.height;
+  // üç klasik çizgi yolu (oransal)
+  const yollar = [
+    [[0.12,0.38],[0.38,0.30],[0.66,0.27],[0.90,0.33]],   // kalp
+    [[0.10,0.52],[0.38,0.48],[0.64,0.50],[0.86,0.58]],   // akıl
+    [[0.30,0.34],[0.24,0.55],[0.28,0.76],[0.44,0.92]],   // hayat
+  ];
+  const t0 = performance.now();
+  cancelAnimationFrame(handLineAnim);
+  function draw(now) {
+    const t = (now - t0) / 1000;
+    ctx.clearRect(0, 0, W, H);
+    yollar.forEach((y, yi) => {
+      const prog = Math.min(1, t / 1.6 - yi * 0.25);   // sırayla çizilir
+      if (prog <= 0) return;
+      ctx.beginPath();
+      const n = Math.max(2, Math.floor(y.length * 24 * prog));
+      for (let i = 0; i <= n; i++) {
+        const p = (i / (y.length * 24)) * (y.length - 1);
+        const s = Math.min(y.length - 2, Math.floor(p));
+        const f = p - s;
+        const x = (y[s][0] + (y[s+1][0] - y[s][0]) * f) * W;
+        const yy = (y[s][1] + (y[s+1][1] - y[s][1]) * f) * H
+                   + Math.sin(t * 2 + i * 0.4) * 0.8;
+        i === 0 ? ctx.moveTo(x, yy) : ctx.lineTo(x, yy);
+      }
+      ctx.strokeStyle = `rgba(232,201,106,${0.55 + Math.sin(t * 2.4 + yi) * 0.2})`;
+      ctx.lineWidth = 1.6;
+      ctx.shadowColor = 'rgba(232,201,106,0.6)';
+      ctx.shadowBlur = 5;
+      ctx.stroke();
+    });
+    handLineAnim = requestAnimationFrame(draw);
+  }
+  handLineAnim = requestAnimationFrame(draw);
+}
+function stopHandLines() {
+  cancelAnimationFrame(handLineAnim);
+  const cv = document.getElementById('handLines');
+  if (cv && cv.width) cv.getContext('2d').clearRect(0, 0, cv.width, cv.height);
+}
 
 async function analyze() {
   if (!imageBase64) return;
@@ -2170,6 +2239,24 @@ function renderResults(data) {
   });
 
   document.getElementById('overallText').textContent = data.overall;
+
+  // El sonucu (el fotoğrafı verildiyse)
+  const elSec = document.getElementById('elSection');
+  if (data.el && data.el.el_tipi) {
+    document.getElementById('elTipi2').textContent = data.el.el_tipi;
+    const cont = document.getElementById('elCizgiler');
+    cont.innerHTML = (data.el.cizgiler || []).map(c => `
+      <div class="imza-card">
+        <div class="imza-yer">${c.ad}</div>
+        <div class="imza-anlam">${c.yorum}</div>
+      </div>`).join('');
+    document.getElementById('elKiraat2').textContent = data.el.kiraat || '';
+    elSec.style.display = 'block';
+  } else {
+    elSec.style.display = 'none';
+  }
+  stopHandLines();
+
   resultsEl.style.display = 'block';
 
   // Animate intensity bars
@@ -2195,10 +2282,7 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   });
   ['angleSlotR','angleSlotL'].forEach(id => document.getElementById(id).classList.remove('filled'));
   ['angleFileR','angleFileL'].forEach(id => document.getElementById(id).value = '');
-  // Yol kıraatini sıfırla
-  lastGelecek = null;
-  document.getElementById('gelecekInvite').style.display = 'block';
-  document.getElementById('gelecekResult').style.display = 'none';
+
   previewContainer.style.display = 'none';
   analyzeBtn.style.display = 'none';
   resultsEl.style.display = 'none';
@@ -2209,11 +2293,13 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   karmaForm.style.display = 'none';
   karmaResult.style.display = 'none';
   ['bName','bDay','bMonth','bYear','bTime'].forEach(id => document.getElementById(id).value = '');
-  // El sîması alanını da sıfırla
-  elImageBase64 = null;
-  document.getElementById('elInvite').style.display = 'block';
-  document.getElementById('elResult').style.display = 'none';
-  elFileInput.value = '';
+  // El alanını sıfırla
+  angleHandB64 = null;
+  const th=document.getElementById('angleThumbH'); th.src=''; th.classList.remove('show');
+  document.getElementById('angleSlotH').classList.remove('filled');
+  document.getElementById('angleFileH').value='';
+  document.getElementById('elSection').style.display='none';
+  stopHandLines();
   stopLandmarkAnim();
 });
 
@@ -2579,182 +2665,6 @@ function downloadBlob(blob) {
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
-// ---- GELECEK / YOL KIRAATİ ----
-let lastGelecek = null;
-const TEMA_ADI = { ask: 'Aşk', bereket: 'Bereket', kariyer: 'Kariyer', canlilik: 'Canlılık' };
-
-document.getElementById('gelecekBtn').addEventListener('click', async () => {
-  const btn = document.getElementById('gelecekBtn');
-  const invite = document.getElementById('gelecekInvite');
-  if (!imageBase64) {
-    showError('Önce bir yüz fotoğrafı yükleyip sîmânı okut.');
-    return;
-  }
-  btn.disabled = true;
-  invite.style.display = 'none';
-  errorBox.style.display = 'none';
-
-  try {
-    const lt = loadingEl.querySelector('.loading-text');
-    if (lt) lt.textContent = 'Yolun kıraati yazılıyor... (derin okuma — bir dakikaya kadar sürebilir)';
-    loadingEl.style.display = 'block';
-    try { Sound.scanStart(); } catch (e) {}
-
-    // Doğum bilgisi varsa harmanla (karma formundan ya da günlük kayıttan)
-    const extra = {};
-    try {
-      const d = parseInt(document.getElementById('bDay').value);
-      const m = parseInt(document.getElementById('bMonth').value);
-      const y = parseInt(document.getElementById('bYear').value);
-      if (d && m && y) {
-        const t = document.getElementById('bTime').value;
-        let hour = 12.0;
-        if (t) { const [hh, mm] = t.split(':').map(Number); hour = hh + (mm || 0) / 60; }
-        const cityEl = document.getElementById('bCity');
-        extra.birth = { year: y, month: m, day: d, hour, city: cityEl ? cityEl.value.trim() : '' };
-      } else {
-        const saved = getBirth();
-        if (saved) extra.birth = saved;
-      }
-    } catch (e) { console.warn('doğum bilgisi okunamadı', e); }
-
-    let res;
-    try {
-      res = await fetch('/gelecek', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(facePayload(extra))
-      });
-    } catch (netErr) {
-      throw new Error('Sunucuya ulaşılamadı — uygulama uykudan uyanıyor ya da bağlantı koptu. 30 saniye bekleyip tekrar dene.');
-    }
-    const raw = await res.text();
-    let data;
-    try { data = JSON.parse(raw); }
-    catch (e) {
-      if (res.status === 404)
-        throw new Error('Sunucuda /gelecek adresi yok — app.py güncel sürümü yüklenmemiş olabilir.');
-      if (res.status === 502 || res.status === 504)
-        throw new Error('Sunucu cevap veremedi (zaman aşımı). Birkaç saniye sonra dene.');
-      throw new Error('Sunucudan beklenmeyen cevap (durum ' + res.status + ').');
-    }
-    if (data.error) throw new Error(data.error);
-    lastGelecek = data;
-    Sound.reveal();
-    renderGelecek('ask');
-    document.getElementById('gelecekResult').style.display = 'block';
-    const mh = data.muhur || data['mühür'] || '';
-    document.getElementById('gelecekMuhur').textContent = mh ? ('❝ ' + mh + ' ❞') : '';
-    document.getElementById('gelecekResult').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  } catch (err) {
-    showError('Hata: ' + err.message);
-    document.getElementById('gelecekInvite').style.display = 'block';
-    console.error(err);
-  } finally {
-    loadingEl.style.display = 'none';
-    btn.disabled = false;
-  }
-});
-
-function renderGelecek(tema) {
-  if (!lastGelecek || !lastGelecek[tema]) return;
-  const t = lastGelecek[tema];
-  document.getElementById('gelecekPanel').innerHTML = `
-    <div class="gelecek-baslik">${t.baslik || TEMA_ADI[tema]}</div>
-    <div class="gelecek-kiraat">${t.kiraat || ''}</div>
-    ${t.isaret ? `<div class="gelecek-isaret">◈ ${t.isaret}</div>` : ''}
-    ${t.tavsiye ? `<div class="gelecek-tavsiye">☽ ${t.tavsiye}</div>` : ''}`;
-  document.querySelectorAll('.gelecek-tab').forEach(b => {
-    b.classList.toggle('active', b.dataset.tema === tema);
-  });
-}
-
-document.querySelectorAll('.gelecek-tab').forEach(b => {
-  b.addEventListener('click', () => renderGelecek(b.dataset.tema));
-});
-
-// ---- EL SÎMASI ----
-const elToggleBtn = document.getElementById('elToggleBtn');
-const elFileInput = document.getElementById('elFileInput');
-let elImageBase64 = null;
-
-elToggleBtn.addEventListener('click', () => elFileInput.click());
-elFileInput.addEventListener('change', e => {
-  if (e.target.files[0]) handleElFile(e.target.files[0]);
-});
-
-function handleElFile(file) {
-  const reader = new FileReader();
-  reader.onload = e => {
-    const dataUrl = e.target.result;
-    const tmp = new Image();
-    tmp.onload = () => {
-      const maxDim = 1024;
-      let w = tmp.width, h = tmp.height;
-      if (w > h && w > maxDim) { h = h * maxDim / w; w = maxDim; }
-      else if (h > maxDim) { w = w * maxDim / h; h = maxDim; }
-      const c = document.createElement('canvas');
-      c.width = w; c.height = h;
-      c.getContext('2d').drawImage(tmp, 0, 0, w, h);
-      const jpeg = c.toDataURL('image/jpeg', 0.85);
-      elImageBase64 = jpeg.split(',')[1];
-      document.getElementById('elPreview').src = jpeg;
-      analyzeEl();
-    };
-    tmp.src = dataUrl;
-  };
-  reader.readAsDataURL(file);
-}
-
-async function analyzeEl() {
-  if (!elImageBase64) return;
-  document.getElementById('elInvite').style.display = 'none';
-  loadingEl.querySelector('.loading-text').textContent = 'El sîması okunuyor...';
-  loadingEl.style.display = 'block';
-  errorBox.style.display = 'none';
-  Sound.scanStart();
-  try {
-    const res = await fetch('/el', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: elImageBase64, mediaType: 'image/jpeg' })
-    });
-    const raw = await res.text();
-    let data;
-    try { data = JSON.parse(raw); }
-    catch (e) {
-      if (res.status === 502 || res.status === 504)
-        throw new Error('Sunucu cevap veremedi (zaman aşımı). Birkaç saniye sonra dene.');
-      throw new Error('Sunucudan beklenmeyen cevap (durum ' + res.status + ').');
-    }
-    if (data.error) throw new Error(data.error);
-    Sound.reveal();
-    renderEl(data);
-  } catch (err) {
-    showError('Hata: ' + err.message);
-    document.getElementById('elInvite').style.display = 'block';
-    console.error(err);
-  } finally {
-    loadingEl.style.display = 'none';
-  }
-}
-
-function renderEl(data) {
-  document.getElementById('elTipi').textContent = data.el_tipi || '';
-  const box = document.getElementById('elOzellikler');
-  box.innerHTML = '';
-  (data.ozellikler || []).forEach(o => {
-    const card = document.createElement('div');
-    card.className = 'brief-card caution';
-    card.innerHTML = `<div class="brief-title">${o.ad}</div>
-      <ul class="brief-list"><li>${o.yorum}</li></ul>`;
-    box.appendChild(card);
-  });
-  document.getElementById('elKiraat').textContent = data.kiraat || '';
-  document.getElementById('elResult').style.display = 'block';
-  document.getElementById('elResult').scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
 // ---- SÎMÂ EŞLEŞMESİ ----
 const tabSolo = document.getElementById('tabSolo');
 const tabMatch = document.getElementById('tabMatch');
@@ -2988,12 +2898,14 @@ class DumanYuz {
       });
     }
     // dışa doğru dağılan hüzmeler (saç/ışık)
-    for (let i = 0; i < 46; i++) {
-      const a = -Math.PI * 0.5 + (Math.random() - 0.5) * Math.PI * 1.85;
+    for (let i = 0; i < 52; i++) {
+      // dikey ağırlıklı: yukarı (saç) ve aşağı (sakal ışıması) akan hüzmeler
+      const yukari = Math.random() < 0.62;
+      const a = (yukari ? -Math.PI / 2 : Math.PI / 2) + (Math.random() - 0.5) * 1.15;
       this.wisps.push({
-        a, uz: rnd(1.0, 1.75), r: rnd(0.07, 0.17),
+        a, uz: rnd(0.95, 1.8), r: rnd(0.06, 0.15),
         faz: Math.random() * Math.PI * 2, hiz: rnd(0.3, 0.9),
-        op: rnd(0.03, 0.10)
+        op: rnd(0.035, 0.11)
       });
     }
   }
@@ -3061,77 +2973,105 @@ class DumanYuz {
     const MAVI = '186,214,245';
     const BEYAZ = '235,246,255';
 
-    // 1) dış hüzmeler (saç/ışık) — en arkada
+    // 1) dikey ışık saçakları (referanstaki saç ışıması) — yukarı ve aşağı akar
     for (const s of this.wisps) {
       const sal = Math.sin(t * s.hiz + s.faz);
-      const uz = s.uz + sal * 0.14;
-      const x = cx + Math.cos(s.a) * R * uz * 1.05;
-      const y = cy + Math.sin(s.a) * R * uz * 1.2;
-      this._leke(x, y, R * s.r * (1.6 + sal * 0.3), s.op * D, MAVI);
+      const uz = s.uz + sal * 0.10;
+      const x = cx + Math.cos(s.a) * R * 0.72 * (0.5 + s.uz * 0.4);
+      const y = cy + Math.sin(s.a) * R * uz * 1.45;
+      this._leke(x, y, R * s.r * (1.5 + sal * 0.25), s.op * D, MAVI);
     }
 
-    // 2) yüz kütlesi — süzülen lekeler
+    // 2) yüz kütlesi — dar oval, süzülen lekeler
     for (const b of this.blobs) {
       const sx = Math.sin(t * b.hiz + b.faz) * b.salin;
       const sy = Math.cos(t * b.hiz * 0.8 + b.faz) * b.salin;
-      const x = cx + (b.ax + sx) * R;
-      const y = cy + (b.ay + sy) * R * 1.12;
-      this._leke(x, y, R * b.r * 1.5, b.op * D, MAVI);
+      const x = cx + (b.ax * 0.74 + sx) * R;
+      const y = cy + (b.ay * 1.06 + sy) * R * 1.12;
+      this._leke(x, y, R * b.r * 1.35, b.op * D, MAVI);
     }
 
-    // 3) yüz hatları — ışıkla çizilir (çizgi değil, parıltı)
-    const gz = R * 0.42;                       // gözler arası yarı mesafe
-    const gy = cy - R * 0.10;                  // göz hattı
-    const bx = this.bak.x, by = this.bak.y;
-
-    // kaşlar
-    const kas = (yon, kalk) => {
-      const ox = cx + yon * gz;
-      const oy = gy - R * 0.34 + kalk * R * 0.02;
-      for (let i = -3; i <= 3; i++) {
-        const p = i / 3;
-        const x = ox + p * R * 0.34;
-        const y = oy - Math.cos(p * 1.5) * R * 0.07 + Math.abs(p) * R * 0.03;
-        this._leke(x, y, R * 0.105, 0.17 * D, BEYAZ);
+    // yol boyunca leke dizerek "ışık fırçası" — heykelsi hatların temeli
+    const firca = (pts, r, op, renk) => {
+      for (let i = 0; i < pts.length - 1; i++) {
+        const [x1, y1] = pts[i], [x2, y2] = pts[i + 1];
+        const seg = Math.max(2, Math.hypot(x2 - x1, y2 - y1) / (r * 0.5));
+        for (let j = 0; j <= seg; j++) {
+          const p = j / seg;
+          this._leke(x1 + (x2 - x1) * p, y1 + (y2 - y1) * p, r, op * D, renk);
+        }
       }
     };
-    kas(-1, this.kasL); kas(1, this.kasR);
-
-    // burun
-    for (let i = 0; i < 5; i++) {
-      const p = i / 4;
-      this._leke(cx + bx * R * 0.03, gy + R * (0.14 + p * 0.34), R * 0.085, 0.075 * D, MAVI);
-    }
-
-    // ağız
-    const agizAc = this.agiz;
-    for (let i = -4; i <= 4; i++) {
-      const p = i / 4;
-      const x = cx + p * R * 0.34;
-      const y = gy + R * 0.72 + Math.cos(p * 1.6) * R * (0.045 + agizAc * 0.10);
-      this._leke(x, y, R * (0.085 + agizAc * 0.05), (0.14 + agizAc * 0.06) * D, BEYAZ);
-    }
-
-    // 4) gözler — parlayan boşluklar (en önde, keskin)
-    const kapakToplam = Math.min(1, this.kapak + this.tabanKapak);
-    const goz = (yon) => {
-      const ex = cx + yon * gz + bx * R * 0.07;
-      const ey = gy + by * R * 0.05;
-      const ry = R * 0.115 * (1 - kapakToplam);
-      if (ry <= 0.5) return;
-      // dış hale
-      this._leke(ex, ey, R * 0.34, 0.16 * D, BEYAZ);
-      // parlak çekirdek
-      const g = ctx.createRadialGradient(ex, ey, 0, ex, ey, R * 0.19);
-      g.addColorStop(0, `rgba(255,255,255,${0.95 * D})`);
-      g.addColorStop(0.4, `rgba(220,238,255,${0.75 * D})`);
-      g.addColorStop(1, 'rgba(180,214,245,0)');
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.ellipse(ex, ey, R * 0.185, ry, 0, 0, Math.PI * 2);
-      ctx.fill();
+    const egri = (x0, y0, cx1, cy1, x1, y1, n) => {
+      const out = [];
+      for (let i = 0; i <= n; i++) {
+        const p = i / n, q = 1 - p;
+        out.push([q * q * x0 + 2 * q * p * cx1 + p * p * x1,
+                  q * q * y0 + 2 * q * p * cy1 + p * p * y1]);
+      }
+      return out;
     };
-    goz(-1); goz(1);
+
+    const gz = R * 0.34;                 // gözler arası yarı mesafe (daha dar, insansı)
+    const gy = cy - R * 0.18;
+    const bx = this.bak.x, by = this.bak.y;
+
+    // 3) KAŞLAR — belirgin kemer, mimikle oynar
+    const kasCiz = (yon, kalk) => {
+      const ox = cx + yon * gz, oy = gy - R * 0.17 - kalk * R * 0.015;
+      firca(egri(ox - yon * R * 0.20, oy + R * 0.03,
+                 ox, oy - R * 0.055,
+                 ox + yon * R * 0.19, oy + R * 0.045, 8), R * 0.045, 0.16, BEYAZ);
+    };
+    kasCiz(-1, this.kasL); kasCiz(1, this.kasR);
+
+    // 4) GÖZLER — oyuk, kenarları parlayan badem (referans gibi)
+    const kapakToplam = Math.min(1, this.kapak + this.tabanKapak);
+    const gozCiz = (yon) => {
+      const ex = cx + yon * gz + bx * R * 0.045;
+      const ey = gy + by * R * 0.035;
+      const acik = 1 - kapakToplam;
+      if (acik <= 0.06) return;
+      const rw = R * 0.155, rh = R * 0.085 * acik;
+      // iç boşluk ışıması
+      this._leke(ex, ey, rw * 1.15, 0.30 * acik * D, BEYAZ);
+      // parlak kenar çizgisi (badem konturu)
+      const N = 30;
+      for (let i = 0; i < N; i++) {
+        const a = (i / N) * Math.PI * 2;
+        this._leke(ex + Math.cos(a) * rw, ey + Math.sin(a) * rh, R * 0.034, 0.34 * acik * D, '255,255,255');
+      }
+      // çekirdek parlaklık
+      const g = ctx.createRadialGradient(ex, ey, 0, ex, ey, rw);
+      g.addColorStop(0, `rgba(255,255,255,${0.85 * acik * D})`);
+      g.addColorStop(0.55, `rgba(225,240,255,${0.4 * acik * D})`);
+      g.addColorStop(1, 'rgba(190,220,246,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.ellipse(ex, ey, rw, rh, 0, 0, Math.PI * 2); ctx.fill();
+    };
+    gozCiz(-1); gozCiz(1);
+
+    // 5) BURUN — köprü ışığı + uç
+    firca([[cx, gy + R * 0.04], [cx + bx * R * 0.015, gy + R * 0.42]], R * 0.035, 0.10, BEYAZ);
+    this._leke(cx, gy + R * 0.47, R * 0.075, 0.14, BEYAZ);
+    this._leke(cx - R * 0.085, gy + R * 0.475, R * 0.045, 0.10, MAVI);
+    this._leke(cx + R * 0.085, gy + R * 0.475, R * 0.045, 0.10, MAVI);
+
+    // 6) DUDAKLAR — dolgun, iki katlı (referansın imzası), konuşunca açılır
+    const ag = this.agiz;                       // 0..1
+    const my = gy + R * 0.70;
+    // üst dudak: iki kavis (M biçimi)
+    firca(egri(cx - R * 0.20, my, cx - R * 0.095, my - R * (0.055 + ag * 0.02), cx, my - R * 0.012, 8), R * 0.052, 0.22, BEYAZ);
+    firca(egri(cx, my - R * 0.012, cx + R * 0.095, my - R * (0.055 + ag * 0.02), cx + R * 0.20, my, 8), R * 0.052, 0.22, BEYAZ);
+    // alt dudak: dolgun tek kavis, konuşunca aşağı iner
+    firca(egri(cx - R * 0.185, my + R * 0.012, cx, my + R * (0.115 + ag * 0.14), cx + R * 0.185, my + R * 0.012, 10), R * 0.062, 0.26, BEYAZ);
+    // dudak arası gölge hattı (hafif mavi, ayırt edici)
+    firca([[cx - R * 0.17, my + R * 0.004], [cx + R * 0.17, my + R * 0.004]], R * 0.022, 0.10, MAVI);
+
+    // 7) çene ve elmacık ışıkları (heykelsilik)
+    this._leke(cx, my + R * 0.30, R * 0.16, 0.06, MAVI);
+    this._leke(cx - R * 0.33, gy + R * 0.34, R * 0.13, 0.05, MAVI);
+    this._leke(cx + R * 0.33, gy + R * 0.34, R * 0.13, 0.05, MAVI);
 
     ctx.globalCompositeOperation = 'source-over';
     requestAnimationFrame(this._dongu);
