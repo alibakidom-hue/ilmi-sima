@@ -1031,6 +1031,15 @@
     line-height: 1.65;
     font-weight: 300;
   }
+  .trait-gelecek {
+    color: var(--gold-light);
+    font-size: 0.92rem;
+    font-style: italic;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(201,168,76,0.2);
+    line-height: 1.55;
+  }
 
   .trait-intensity {
     margin-top: 12px;
@@ -2285,6 +2294,7 @@ function renderResults(data) {
         <div class="trait-arabic">${t.arabic}</div>
       </div>
       <div class="trait-desc">${t.description}</div>
+      ${t.gelecek ? `<div class="trait-gelecek">→ ${t.gelecek}</div>` : ''}
       <div class="trait-intensity">
         <div class="intensity-bar"><div class="intensity-fill" style="width:0%" data-width="${t.intensity}%"></div></div>
         <div class="intensity-label">${intensityText}</div>
@@ -2303,6 +2313,7 @@ function renderResults(data) {
       <div class="imza-card">
         <div class="imza-yer">${c.ad}</div>
         <div class="imza-anlam">${c.yorum}</div>
+        ${c.gelecek ? `<div class="trait-gelecek">→ ${c.gelecek}</div>` : ''}
       </div>`).join('');
     document.getElementById('elKiraat2').textContent = data.el.kiraat || '';
     elSec.style.display = 'block';
@@ -2448,6 +2459,7 @@ function renderKarma(data) {
         <div class="alan-card">
           <div class="alan-ad">${a.alan || ''}</div>
           <div class="alan-yorum">${a.yorum || ''}</div>
+          ${a.yol ? `<div class="trait-gelecek">→ ${a.yol}</div>` : ''}
           ${a.dayanak ? `<div class="alan-dayanak">◈ ${a.dayanak}</div>` : ''}
         </div>`).join('');
   }
@@ -2530,8 +2542,14 @@ function renderKarma(data) {
     if (items && items.length) {
       const card = document.createElement('div');
       card.className = 'brief-card ' + s.cls;
+      const li = items.map(i => {
+        if (typeof i === 'object' && i !== null) {
+          return `<li>${i.ozellik || ''}${i.gelecek ? `<div class="trait-gelecek">→ ${i.gelecek}</div>` : ''}</li>`;
+        }
+        return `<li>${i}</li>`;
+      }).join('');
       card.innerHTML = `<div class="brief-title">${s.title}</div>
-        <ul class="brief-list">${items.map(i => `<li>${i}</li>`).join('')}</ul>`;
+        <ul class="brief-list">${li}</ul>`;
       bf.appendChild(card);
     }
   });
