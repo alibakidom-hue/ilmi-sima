@@ -444,15 +444,17 @@ içini ciddiyetle incele.
 3. GÖZLER (العُيُون) 4. BURUN (الأَنْف) 5. AĞIZ VE DUDAKLAR (الشِّفَاه) 6. ÇENE (الذَّقَن).
 'name' Türkçe adı, 'arabic' Arapça karşılığı olsun.
 
-KISALIK KURALI — ÇOK ÖNEMLİ: Her trait EN FAZLA 2-3 cümle. Uzun paragraf YASAK. \
-İlk cümle gördüğün hattı ve mizacını söyler (somut tarif içinde), SON cümle geleceğe bakar: \
-'bu hat seni ileride ...e taşır' ya da 'bunu törpülemende fayda var' dilinde. \
-Genel geçer cümle ('zekisin', 'duygusalsın') yasak; ayrımı keskin yaz.
+KISALIK KURALI — ÇOK ÖNEMLİ: 'description' alanı EN FAZLA 2 cümle ve SADECE gözlem \
+(gördüğün hattı ve mizacını somut tarif et). Genel geçer cümle ('zekisin', 'duygusalsın') \
+yasak; ayrımı keskin yaz. 'gelecek' alanı AYRI ve ZORUNLUDUR — gözlemi tekrar etmeden, \
+'bu hat seni ileride ...e taşır' ya da 'bunu törpülemende fayda var' dilinde tek cümle. \
+Bu alanı boş bırakma.
 
 EL OKUMA (el fotoğrafı verildiyse): Elin tipini söyle ve ÜÇ ANA ÇİZGİYİ oku — Kalp Çizgisi \
 (duygu yolu), Akıl Çizgisi (zihin yolu), Hayat Çizgisi (canlılık yolu). Fotoğrafta GERÇEKTEN \
-görünene dayan; bir çizgi net seçilemiyorsa bunu dürüstçe söyle, uydurma. Her çizgi 2 cümle: \
-gözlem + geleceğe dönük eğilim. El fotoğrafı YOKSA 'el' alanlarını boş string ve boş listeyle doldur.
+görünene dayan; bir çizgi net seçilemiyorsa bunu dürüstçe söyle, uydurma. 'yorum' sadece \
+gözlem (1 cümle); 'gelecek' alanı ayrı ve zorunlu, geleceğe dönük eğilim. El fotoğrafı \
+YOKSA 'el' alanlarını boş string ve boş listeyle doldur.
 
 DENGE: Hem parlak yönü hem gölgeyi söyle; gölgeyi yapıcı gelecek diliyle ver ('çabuk \
 parlayabilirsin — ileride törpülemende fayda var' gibi). Kesin kehanet yok ('şu tarihte şu \
@@ -482,13 +484,19 @@ SIMA_TOOL = {
                         "arabic": {"type": "string"},
                         "description": {
                             "type": "string",
-                            "description": "KISA: en fazla 2-3 cümle. İlk cümle hattın söylediği mizaç, "
-                                           "SON cümle geleceğe dönük eğilim ('bu hat seni ileride ...e "
-                                           "taşır / ...den sakınmanda fayda var' dilinde).",
+                            "description": "Gözlem: en fazla 2 cümle. Sadece gördüğün hattı ve mizacını "
+                                           "tarif et; gelecek/tavsiye buraya YAZMA, o ayrı alanda.",
+                        },
+                        "gelecek": {
+                            "type": "string",
+                            "description": "ZORUNLU, TEK cümle, geleceğe dönük eğilim. Kalıp: 'Bu hat seni "
+                                           "ileride ...e taşır' YA DA '...meylin var — bunu ileride "
+                                           "törpülemende/güçlendirmende fayda var'. Gözlem cümlesini "
+                                           "tekrar etme, yeni bir şey söyle.",
                         },
                         "intensity": {"type": "integer"},
                     },
-                    "required": ["name", "arabic", "description", "intensity"],
+                    "required": ["name", "arabic", "description", "gelecek", "intensity"],
                 },
             },
             "el": {
@@ -504,9 +512,14 @@ SIMA_TOOL = {
                             "type": "object",
                             "properties": {
                                 "ad": {"type": "string", "description": "Kalp Çizgisi / Akıl Çizgisi / Hayat Çizgisi"},
-                                "yorum": {"type": "string", "description": "2 cümle: gözlem + geleceğe dönük eğilim"},
+                                "yorum": {"type": "string", "description": "1 cümle: sadece gözlem (çizginin şekli/derinliği)."},
+                                "gelecek": {
+                                    "type": "string",
+                                    "description": "ZORUNLU, tek cümle, geleceğe dönük eğilim. "
+                                                   "'Bu çizgi ileride ...e işaret eder' kalıbında.",
+                                },
                             },
-                            "required": ["ad", "yorum"],
+                            "required": ["ad", "yorum", "gelecek"],
                         },
                     },
                     "kiraat": {"type": "string", "description": "Elin bütünsel kıraati, 2-3 cümle, geleceğe dönük"},
@@ -600,26 +613,41 @@ KARMA_TOOL = {
             },
             "hayat_alanlari": {
                 "type": "array",
-                "description": "Haritanın konu konu okunuşu. ŞU DÖRT ALANIN HER BİRİ İÇİN birer madde yaz: Aşk (5/7. ev, Venüs, Ay), Para (2/8. ev, Jüpiter, Venüs), Kariyer (6/10. ev, MC, Satürn), Canlılık (1. ev, Mars, Güneş — SADECE enerji/tempo, tıbbi iddia YASAK). Her yorum geleceğe dönük eğilim diliyle bitsin.",
+                "description": "Haritanın konu konu okunuşu. ŞU DÖRT ALANIN HER BİRİ İÇİN birer madde yaz: Aşk (5/7. ev, Venüs, Ay), Para (2/8. ev, Jüpiter, Venüs), Kariyer (6/10. ev, MC, Satürn), Canlılık (1. ev, Mars, Güneş — SADECE enerji/tempo, tıbbi iddia YASAK).",
                 "items": {
                     "type": "object",
                     "properties": {
-                        "alan": {"type": "string", "description": "Alan adı (yukarıdaki altıdan biri)"},
-                        "yorum": {"type": "string", "description": "Bu alandaki eğilim, 2-3 cümle. Hem imkânı hem zorluğu söyle. Özlü yaz, dolgu cümle kurma."},
+                        "alan": {"type": "string", "description": "Alan adı (yukarıdaki dörtten biri)"},
+                        "yorum": {"type": "string", "description": "Bu alandaki GÖZLEM, 2 cümle. Gelecek/tavsiye buraya yazma, ayrı alanda. Hem imkânı hem zorluğu söyle."},
                         "dayanak": {"type": "string", "description": "Bu yorumu dayandırdığın SOMUT yerleşim (örn: 'Venüs 8. evde, Plüton ile kavuşum')"},
+                        "yol": {"type": "string", "description": "ZORUNLU, tek cümle: bu alanda önündeki yol/eğilim. 'Önümüzdeki dönemde ...' ya da '...meylin var, bunu değerlendirmende fayda var' kalıbında. yorum'u tekrar etme."},
                     },
-                    "required": ["alan", "yorum", "dayanak"],
+                    "required": ["alan", "yorum", "dayanak", "yol"],
                 },
             },
             "guclu_yanlar": {
                 "type": "array",
-                "description": "3 güçlü yan, geleceğe dönük dille: '... — bu seni ileride ...de öne çıkarır'. Parantez içinde dayanak (örn: Satürn 1. evde).",
-                "items": {"type": "string"},
+                "description": "3 güçlü yan. Her biri: gözlem + ZORUNLU geleceğe dönük ikinci cümle.",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "ozellik": {"type": "string", "description": "Kısa gözlem, parantez içinde dayanak (örn: 'Baskı altında soğukkanlı kalır (Satürn 1. evde)')"},
+                        "gelecek": {"type": "string", "description": "ZORUNLU tek cümle: 'Bu seni ileride ...de öne çıkarır' kalıbında."},
+                    },
+                    "required": ["ozellik", "gelecek"],
+                },
             },
             "golge_yanlar": {
                 "type": "array",
-                "description": "3 gölge yan, dürüst ama YAPICI GELECEK diliyle: 'çabuk parlayabilirsin — bunu ileride törpülemende fayda var' kalıbında. Parantez içinde dayanak.",
-                "items": {"type": "string"},
+                "description": "3 gölge yan. Her biri: dürüst gözlem + ZORUNLU YAPICI GELECEK ikinci cümle.",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "ozellik": {"type": "string", "description": "Kısa gözlem, parantez içinde dayanak (örn: 'Yakınlıkta kontrolü bırakmakta zorlanır (Ay-Plüton karesi)')"},
+                        "gelecek": {"type": "string", "description": "ZORUNLU tek cümle: 'Çabuk parlayabilirsin — bunu ileride törpülemende fayda var' kalıbında yapıcı tavsiye."},
+                    },
+                    "required": ["ozellik", "gelecek"],
+                },
             },
             "dikkat_edilecekler": {
                 "type": "array",
@@ -709,12 +737,13 @@ Bunun yerine ayrımı keskin şeyler yaz: hangi durumda ne yapar, neyi erteler, 
 çekingen) bunu söyle. Asıl derinlik çelişkidedir. Aynısını yüz ile harita arasında da yap.
 - Boş evleri sorun sayma; o evin başlangıç burcunun yöneticisine bak.
 
-GELECEK DİLİ — HER BÖLÜMDE: Bu okuma geçmişi değil YOLU anlatır. Güçlü yanlar 'bu seni \
-ileride ...de öne çıkarır', gölge yanlar 'çabuk parlayabilirsin — bunu ileride törpülemende \
-fayda var' kalıbında yazılır. Dört hayat alanı da eğilim + ileriye dönük tavsiyeyle biter.
+GELECEK DİLİ — HER BÖLÜMDE ZORUNLU: Bu okuma geçmişi değil YOLU anlatır. 'guclu_yanlar' ve \
+'golge_yanlar' artık {{ozellik, gelecek}} nesneleridir — 'gelecek' alanını BOŞ BIRAKMA, her \
+zaman doldur. Aynı şekilde her hayat alanının 'yol' alanı da zorunludur ve 'yorum'u tekrar \
+etmeden yeni, ileriye dönük bir şey söyler.
 
-KISALIK: Uzun paragraf yok. Kiraat 4-5 cümle, her alan 2-3 cümle, maddeler tek cümle. \
-Okuyan yorulmamalı.
+KISALIK: Uzun paragraf yok. Kiraat 4-5 cümle, her alan 'yorum' 2 cümle + 'yol' 1 cümle, \
+madde 'ozellik' 1 cümle + 'gelecek' 1 cümle. Okuyan yorulmamalı.
 
 DENGE: Yağcılık yapma; hem meziyeti hem gölgeyi söyle ama kişiyi yıkma. Kesin kehanet \
 ('şu tarihte şu olacak') ve tıbbi iddia YASAK — Canlılık alanı yalnızca enerji/tempo konuşur.
