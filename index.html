@@ -593,6 +593,7 @@
     width: 100%; height: 100%;
     object-fit: cover;
     filter: sepia(0.15);
+    z-index: 1;
   }
   .angle-thumb.show { display: block; }
   .angle-lines {
@@ -601,6 +602,30 @@
     width: 100%; height: 100%;
     pointer-events: none;
     z-index: 2;
+  }
+  .hand-slot {
+    position: relative;
+    margin-top: 12px;
+    height: 190px;
+    border: 1px dashed rgba(201,168,76,0.35);
+    border-radius: 5px;
+    background: rgba(201,168,76,0.03);
+    cursor: pointer;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.3s;
+  }
+  .hand-slot:hover { border-color: rgba(201,168,76,0.6); }
+  .hand-slot.filled { border-style: solid; }
+  .hand-slot .angle-icon { font-size: 1.6rem; }
+  .hand-hint {
+    font-size: 0.7rem;
+    color: var(--gold-dim);
+    opacity: 0.7;
+    margin-top: 4px;
+    font-style: italic;
   }
   .el-section {
     border: 1px solid rgba(201,168,76,0.15);
@@ -1483,17 +1508,21 @@
         <img class="angle-thumb" id="angleThumbL" alt="">
         <input type="file" id="angleFileL" accept="image/*" style="display:none">
       </div>
-      <div class="angle-slot" id="angleSlotH">
-        <div class="angle-inner">
-          <div class="angle-icon">✋</div>
-          <div class="angle-text">El (avuç içi)</div>
-        </div>
-        <canvas class="angle-lines" id="handLines"></canvas>
-        <img class="angle-thumb" id="angleThumbH" alt="">
-        <input type="file" id="angleFileH" accept="image/*" style="display:none">
-      </div>
     </div>
-    <div class="angles-hint">Profiller burun ve çeneyi, avuç içi çizgileri okutur.</div>
+
+    <!-- El — ayrı ve büyük, çizgiler okunabilsin -->
+    <div class="hand-slot" id="angleSlotH">
+      <div class="angle-inner" id="handInner">
+        <div class="angle-icon">✋</div>
+        <div class="angle-text">El (avuç içi) ekle</div>
+        <div class="hand-hint">Kalp, akıl ve hayat çizgisi okunur</div>
+      </div>
+      <img class="angle-thumb" id="angleThumbH" alt="">
+      <canvas class="angle-lines" id="handLines"></canvas>
+      <input type="file" id="angleFileH" accept="image/*" style="display:none">
+    </div>
+  </div>
+    <div class="angles-hint">Profiller burun ve çeneyi ayrıntılandırır.</div>
   </div>
 
   <!-- SÎMÂ EŞLEŞMESİ modu -->
@@ -1686,7 +1715,8 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"
+        onerror="this.onerror=null; const s=document.createElement('script'); s.src='https://unpkg.com/@vladmandic/face-api/dist/face-api.js'; document.head.appendChild(s);"></script>
 <script>
 // ---- Yıldız alanı animasyonu ----
 (function initStarfield() {
@@ -1865,19 +1895,37 @@ function handleFile(file) {
 // ---- Yüz noktaları: önce dekoratif (anında), sonra gerçek tespit ----
 let faceModelsLoaded = false;
 
+const FACE_MODEL_URLS = [
+  'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/',
+  'https://unpkg.com/@vladmandic/face-api/model/',
+];
+let faceModelsLoading = null;
+
 async function ensureFaceModels() {
   if (faceModelsLoaded) return true;
-  if (typeof faceapi === 'undefined') return false;
-  try {
-    const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
-    await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-    await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-    faceModelsLoaded = true;
-    return true;
-  } catch (e) {
-    console.warn('Yüz modelleri yüklenemedi, dekoratif noktalar kullanılacak.', e);
+  if (faceModelsLoading) return faceModelsLoading;   // aynı anda tekrar başlatma
+  faceModelsLoading = (async () => {
+    // faceapi script'i henüz yüklenmediyse kısa süre bekle (yedek CDN devrede olabilir)
+    for (let i = 0; i < 20 && typeof faceapi === 'undefined'; i++) {
+      await new Promise(r => setTimeout(r, 150));
+    }
+    if (typeof faceapi === 'undefined') return false;
+
+    for (const MODEL_URL of FACE_MODEL_URLS) {
+      try {
+        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+        faceModelsLoaded = true;
+        return true;
+      } catch (e) {
+        console.warn('Model kaynağı başarısız, alternatif deneniyor:', MODEL_URL, e);
+      }
+    }
     return false;
-  }
+  })();
+  const ok = await faceModelsLoading;
+  faceModelsLoading = null;
+  return ok;
 }
 
 function setupCanvas() {
@@ -1893,13 +1941,19 @@ function drawLandmarks() {
   detectAndDrawReal();            // arka planda gerçek tespit
 }
 
+async function detectOnce(inputSize, threshold) {
+  return faceapi
+    .detectSingleFace(previewImage, new faceapi.TinyFaceDetectorOptions({ inputSize, scoreThreshold: threshold }))
+    .withFaceLandmarks();
+}
+
 async function detectAndDrawReal() {
   try {
     const ok = await ensureFaceModels();
     if (!ok || !previewImage.complete) return;
-    const det = await faceapi
-      .detectSingleFace(previewImage, new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.3 }))
-      .withFaceLandmarks();
+    // İlk deneme; başarısızsa daha büyük girdi boyutu ve düşük eşikle bir kez daha dene
+    let det = await detectOnce(416, 0.3);
+    if (!det) det = await detectOnce(608, 0.2);
     if (!det) return; // yüz bulunamadı → dekoratif kalsın
     const W = previewImage.offsetWidth, H = previewImage.offsetHeight;
     const resized = faceapi.resizeResults(det, { width: W, height: H });
