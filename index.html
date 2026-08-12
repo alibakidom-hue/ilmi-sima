@@ -3214,39 +3214,79 @@ function ustadSay(state) {
 
 /* ============ SES: derin, ağır, yaşlı bilge tonu ============ */
 const UstadSes = {
-  sec() {
+  _ctx: null, _analyser: null, _audioEl: null,
+
+  // Tarayıcı sesi (yedek — ElevenLabs kurulmadıysa ya da hata verirse devreye girer)
+  secTarayiciSesi() {
     const all = window.speechSynthesis ? (window.speechSynthesis.getVoices() || []) : [];
     const tr = all.filter(v => /tr/i.test(v.lang));
-    // erkek sesi tercih et (Gandalf tonu için), yoksa en kaliteli Türkçe
     return tr.find(v => /yelda|ahmet|erkek|male|tolga|burak/i.test(v.name)) ||
            tr.find(v => /enhanced|premium|natural/i.test(v.name)) ||
            tr.find(v => v.localService) || tr[0] || null;
   },
-  soyle(metin, yuz) {
+  tarayiciyla(metin, yuz) {
     if (!('speechSynthesis' in window)) return false;
     const u = new SpeechSynthesisUtterance(metin);
-    u.lang = 'tr-TR';
-    u.rate = 0.70;    // ağır, düşünerek konuşan
-    u.pitch = 0.35;   // çok pes — bilge/yaşlı ton
-    u.volume = 1;
-    const v = this.sec(); if (v) u.voice = v;
+    u.lang = 'tr-TR'; u.rate = 0.70; u.pitch = 0.35; u.volume = 1;
+    const v = this.secTarayiciSesi(); if (v) u.voice = v;
     let iv = null;
     u.onstart = () => {
       ustadExpress('merakli');
-      if (yuz) {
-        yuz.konusuyor = true;
-        iv = setInterval(() => {
-          yuz.agiz = 0.25 + Math.random() * 0.75;   // konuşma ritmi
-        }, 130);
-      }
+      if (yuz) { yuz.konusuyor = true; iv = setInterval(() => { yuz.agiz = 0.25 + Math.random() * 0.75; }, 130); }
     };
-    u.onend = () => {
-      clearInterval(iv);
-      if (yuz) { yuz.agiz = 0; yuz.konusuyor = false; }
-      ustadExpress('memnun');
-    };
+    u.onend = () => { clearInterval(iv); if (yuz) { yuz.agiz = 0; yuz.konusuyor = false; } ustadExpress('memnun'); };
     try { window.speechSynthesis.cancel(); window.speechSynthesis.speak(u); } catch (e) {}
     return true;
+  },
+
+  // Gerçek ses genliğine göre ağzı hareket ettir (sabit aralık değil, sesin kendisi sürer)
+  _genlikleBaslat(audioEl, yuz) {
+    try {
+      if (!this._ctx) this._ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const src = this._ctx.createMediaElementSource(audioEl);
+      const analyser = this._ctx.createAnalyser();
+      analyser.fftSize = 256;
+      src.connect(analyser); analyser.connect(this._ctx.destination);
+      const buf = new Uint8Array(analyser.frequencyBinCount);
+      const kare = () => {
+        if (audioEl.paused || audioEl.ended) return;
+        analyser.getByteFrequencyData(buf);
+        let s = 0; for (let i = 0; i < buf.length; i++) s += buf[i];
+        const seviye = Math.min(1, (s / buf.length) / 70);
+        if (yuz) yuz.agiz = seviye;
+        requestAnimationFrame(kare);
+      };
+      kare();
+    } catch (e) {
+      // Web Audio kurulamazsa basit ritimle devam et
+      const iv = setInterval(() => { if (yuz) yuz.agiz = 0.25 + Math.random() * 0.75; }, 130);
+      audioEl.addEventListener('ended', () => clearInterval(iv), { once: true });
+    }
+  },
+
+  async soyle(metin, yuz) {
+    // Önce ElevenLabs dene (doğal ses)
+    try {
+      const res = await fetch('/ses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: metin }),
+      });
+      if (!res.ok) throw new Error('ses servisi kullanılamıyor');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      if (this._audioEl) { this._audioEl.pause(); }
+      const audio = new Audio(url);
+      this._audioEl = audio;
+      audio.addEventListener('play', () => { ustadExpress('merakli'); if (yuz) yuz.konusuyor = true; this._genlikleBaslat(audio, yuz); });
+      audio.addEventListener('ended', () => { if (yuz) { yuz.agiz = 0; yuz.konusuyor = false; } ustadExpress('memnun'); URL.revokeObjectURL(url); });
+      if (this._ctx && this._ctx.state === 'suspended') this._ctx.resume();
+      await audio.play();
+      return true;
+    } catch (e) {
+      // ElevenLabs kurulmadıysa/başarısızsa sessizce tarayıcı sesine düş
+      return this.tarayiciyla(metin, yuz);
+    }
   }
 };
 
@@ -3340,11 +3380,14 @@ window.__ustadBaslat = function () {
   document.addEventListener('touchmove', e => { const t = e.touches[0]; if (t) izle(t.clientX, t.clientY); }, { passive: true });
 
   const btn = document.getElementById('ustadSpeak');
-  if (btn) btn.addEventListener('click', () => {
+  if (btn) btn.addEventListener('click', async () => {
     const lines = ustadCurrentLines();
-    if (!UstadSes.soyle(lines[ustadIdx % lines.length], ustadYuz)) {
-      btn.textContent = '♪ Bu tarayıcı desteklemiyor';
-    }
+    const eskiMetin = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '♪ Sesleniyor...';
+    const ok = await UstadSes.soyle(lines[ustadIdx % lines.length], ustadYuz);
+    btn.disabled = false;
+    btn.textContent = ok ? eskiMetin : '♪ Bu tarayıcı desteklemiyor';
   });
 };
 
