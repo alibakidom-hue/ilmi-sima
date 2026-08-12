@@ -13,8 +13,10 @@ tarayıcıya/internete asla sızmaz.
 import os
 import json
 import base64
+import urllib.request
+import urllib.error
 
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, Response
 import anthropic
 
 # Doğum haritası hesabı (Moshier efemerisi — dış veri/internet gerektirmez)
@@ -1136,6 +1138,57 @@ def gelecek():
 
     except anthropic.APIError as e:
         return jsonify({"error": f"API hatası: {str(e)}"}), 502
+    except Exception as e:
+        return jsonify({"error": f"Beklenmeyen hata: {str(e)}"}), 500
+
+
+# ---- SES: ElevenLabs ile doğal Türkçe erkek sesi ----
+ELEVEN_API_KEY = os.environ.get("ELEVENLABS_API_KEY")
+# Varsayılan: ElevenLabs'in bilinen "Adam" sesi (derin, İngilizce doğal ama çok dilli
+# modelle Türkçe de konuşur). Kendi seçtiğin Türkçe sesin varsa Render'da
+# ELEVENLABS_VOICE_ID değişkenini onunla değiştir — sonucu ciddi iyileştirir.
+ELEVEN_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "pNInz6obpgDQGcFmaJgB")
+
+
+@app.route("/ses", methods=["POST"])
+def ses():
+    if not ELEVEN_API_KEY:
+        return jsonify({"error": "Ses servisi henüz kurulmamış (ELEVENLABS_API_KEY eksik)."}), 501
+    try:
+        data = request.get_json()
+        text = (data.get("text") or "").strip()
+        if not text:
+            return jsonify({"error": "Metin boş."}), 400
+        text = text[:600]  # ücretsiz kotayı korumak için makul bir üst sınır
+
+        url = f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVEN_VOICE_ID}"
+        body = json.dumps({
+            "text": text,
+            "model_id": "eleven_multilingual_v2",
+            "voice_settings": {
+                "stability": 0.55,
+                "similarity_boost": 0.8,
+                "style": 0.35,
+                "use_speaker_boost": True,
+            },
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=body,
+            method="POST",
+            headers={
+                "xi-api-key": ELEVEN_API_KEY,
+                "Content-Type": "application/json",
+                "Accept": "audio/mpeg",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            audio = resp.read()
+        return Response(audio, mimetype="audio/mpeg")
+
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode("utf-8", errors="ignore")
+        return jsonify({"error": f"Ses servisi hatası ({e.code}): {detail[:200]}"}), 502
     except Exception as e:
         return jsonify({"error": f"Beklenmeyen hata: {str(e)}"}), 500
 
