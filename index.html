@@ -970,6 +970,60 @@
     margin-bottom: 12px;
   }
 
+  /* HÜKÜM — sonucun ilk ve en büyük şeyi. Ekran görüntüsü alınacak cümle. */
+  .hukum-blok {
+    text-align: center;
+    padding: 34px 20px 30px;
+    border-top: 1px solid rgba(201,168,76,0.18);
+    border-bottom: 1px solid rgba(201,168,76,0.18);
+    margin-bottom: 26px;
+  }
+  .hukum-ust {
+    font-size: 0.66rem; letter-spacing: 0.28em; text-transform: uppercase;
+    color: var(--gold-dim); margin-bottom: 16px;
+  }
+  .hukum-cumle {
+    font-family: 'Crimson Pro', Georgia, serif;
+    font-size: 1.72rem; line-height: 1.35; color: var(--gold-light);
+    max-width: 22ch; margin: 0 auto;
+    text-shadow: 0 0 34px rgba(201,168,76,0.28);
+  }
+  .hukum-alt {
+    margin-top: 18px; font-size: 0.82rem; color: var(--gold);
+    opacity: 0.72; font-style: italic;
+  }
+  @media (max-width: 520px) { .hukum-cumle { font-size: 1.36rem; } }
+
+  /* Dürüstlük şeridi — neyin okunamadığı */
+  .okunamayan {
+    margin: 0 0 26px; padding: 12px 16px;
+    border-left: 2px solid rgba(201,168,76,0.35);
+    background: rgba(201,168,76,0.035);
+    font-size: 0.8rem; line-height: 1.65; color: var(--gold);
+    opacity: 0.85;
+  }
+  .okunamayan b { font-weight: 500; letter-spacing: 0.04em; }
+
+  /* Kanıt / hüküm ayrımı */
+  .kanit {
+    display: block; font-size: 0.75rem; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--gold-dim); margin: 14px 0 5px;
+  }
+  .kanit-metin { color: var(--parchment-dark); opacity: 0.9; }
+  .hukum-metin { color: var(--parchment); }
+
+  /* Detay açar/kapar */
+  .detay-btn {
+    display: block; width: 100%; margin: 0 0 28px;
+    background: none; border: 1px solid rgba(201,168,76,0.28);
+    color: var(--gold); border-radius: 3px; padding: 13px;
+    font-family: inherit; font-size: 0.85rem; letter-spacing: 0.1em;
+    cursor: pointer; transition: background 0.25s;
+  }
+  .detay-btn:hover { background: rgba(201,168,76,0.08); }
+  .detay-govde { display: none; }
+  .detay-govde.acik { display: block; }
+
   .dominant-trait {
     font-family: 'Noto Naskh Arabic', serif;
     font-size: 2rem;
@@ -1530,7 +1584,6 @@
       <canvas class="angle-lines" id="handLines"></canvas>
       <input type="file" id="angleFileH" accept="image/*" style="display:none">
     </div>
-  </div>
     <div class="angles-hint">Profiller burun ve çeneyi ayrıntılandırır.</div>
   </div>
 
@@ -1630,6 +1683,19 @@
   </div>
 
   <div class="results" id="results">
+    <div class="hukum-blok">
+      <div class="hukum-ust">Hüküm</div>
+      <div class="hukum-cumle" id="hukumCumle"></div>
+      <div class="hukum-alt" id="hukumAlt"></div>
+    </div>
+
+    <div class="okunamayan" id="okunamayanKutu" style="display:none"></div>
+
+    <button class="share-btn" id="shareBtnUst" style="margin-bottom:26px">◆ Hükmü Paylaş</button>
+
+    <button class="detay-btn" id="detayBtn">▾ Sîmânın tamamını oku</button>
+
+    <div class="detay-govde" id="detayGovde">
     <div class="result-header">
       <div class="result-label">Baskın Mizaç</div>
       <div class="dominant-trait" id="dominantTrait"></div>
@@ -1648,6 +1714,7 @@
       <div class="overall-title">Genel Kıraat</div>
       <div class="overall-text" id="overallText"></div>
     </div>
+    </div><!-- /detay-govde -->
 
     <!-- KARMA: Doğum haritası katmanı -->
     <div class="karma-invite" id="karmaInvite">
@@ -2302,6 +2369,30 @@ function runScanCounters() {
 
 function renderResults(data) {
   ustadSay('okundu');
+
+  // 1) HÜKÜM — ilk görülen ve paylaşılan şey
+  document.getElementById('hukumCumle').textContent =
+    data.hukum_cumlesi || data.dominantTraitTR || '';
+  document.getElementById('hukumAlt').textContent =
+    data.dominantTraitTR ? 'Baskın mizaç: ' + data.dominantTraitTR : '';
+
+  // 2) DÜRÜSTLÜK — neyin okunamadığı. Güveni bu satır kurar.
+  const okKutu = document.getElementById('okunamayanKutu');
+  const ok = (data.okunamayan || []).filter(Boolean);
+  if (ok.length) {
+    okKutu.innerHTML = '<b>Bu fotoğraftan okuyamadıklarım:</b><br>' +
+      ok.map(s => '— ' + s).join('<br>');
+    okKutu.style.display = 'block';
+  } else {
+    okKutu.style.display = 'none';
+  }
+
+  // 3) Detay katmanı kapalı başlar
+  const gov = document.getElementById('detayGovde');
+  const dbtn = document.getElementById('detayBtn');
+  gov.classList.remove('acik');
+  dbtn.textContent = '▾ Sîmânın tamamını oku';
+
   document.getElementById('dominantTrait').innerHTML =
     `${data.dominantTrait}<br><span style="font-size:1rem;font-family:'Crimson Pro';font-style:italic;opacity:0.7">${data.dominantTraitTR}</span>`;
 
@@ -2317,7 +2408,10 @@ function renderResults(data) {
         <div class="trait-name">${t.name}</div>
         <div class="trait-arabic">${t.arabic}</div>
       </div>
-      <div class="trait-desc">${t.description}</div>
+      <span class="kanit">Görülen</span>
+      <div class="trait-desc kanit-metin">${t.gozlem || t.description || ''}</div>
+      ${t.hukum ? `<span class="kanit">Hüküm</span>
+      <div class="trait-desc hukum-metin">${t.hukum}</div>` : ''}
       ${t.gelecek ? `<div class="trait-gelecek">→ ${t.gelecek}</div>` : ''}
       <div class="trait-intensity">
         <div class="intensity-bar"><div class="intensity-fill" style="width:0%" data-width="${t.intensity}%"></div></div>
@@ -2587,6 +2681,24 @@ function renderKarma(data) {
 // ---- Paylaşım kartı (Story formatı 1080x1920) + mühür ----
 const shareBtn = document.getElementById('shareBtn');
 shareBtn.addEventListener('click', generateShareCard);
+const shareBtnUst = document.getElementById('shareBtnUst');
+if (shareBtnUst) shareBtnUst.addEventListener('click', generateShareCard);
+
+(function detayKur() {
+  const b = document.getElementById('detayBtn');
+  const g = document.getElementById('detayGovde');
+  if (!b || !g) return;
+  b.addEventListener('click', () => {
+    const acik = g.classList.toggle('acik');
+    b.textContent = acik ? '▴ Kıraati kapat' : '▾ Sîmânın tamamını oku';
+    if (acik) {
+      document.querySelectorAll('.intensity-fill').forEach(bar => {
+        bar.style.width = bar.dataset.width;
+      });
+      g.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+})();
 
 function drawSeal(ctx, cx, cy, r, ebcedNum, name) {
   // Stilize Osmanlı mührü (gerçek tuğra değil): iç içe daireler + ebced sayısı
@@ -2942,29 +3054,59 @@ const USTAD_LINES = {
    üst üste binmesiyle oluşur. Her leke kendi ritminde süzülür,
    böylece kütle sürekli nefes alır ve dağılır gibi görünür. */
 class DumanYuz {
+  /* NÛR — hatsız sîmâ.
+     Kaş, göz kapağı, burun, dudak çizilmez. Yüz yalnızca ışığın
+     yoğunluğundan ve olmayan yerlerinden (boşluklardan) doğar.
+     Bir "nefes" döngüsü yüzü belirginlikten dağılmaya götürür:
+     bakan kişi onu yakalamak için beklemek zorunda kalır. */
   constructor(canvas, opts) {
     this.cv = canvas;
     this.ctx = canvas.getContext('2d');
     this.o = Object.assign({ olcek: 1, gez: 0.5, tamEkran: false }, opts || {});
-    this.blobs = [];
-    this.wisps = [];
-    this.bak = { x: 0, y: 0 };      // göz hedefi (-1..1)
+
+    this.bak = { x: 0, y: 0 };
     this.hedef = { x: 0, y: 0 };
-    this.gezHedef = { x: 0, y: 0 }; // ekranda dolaşma
+    this.gezHedef = { x: 0, y: 0 };
     this.gezSu = { x: 0, y: 0 };
-    this.kapak = 0;                 // göz kırpma 0..1
-    this.tabanKapak = 0;
-    this.agiz = 0;                  // 0 kapalı, 1 açık
+
+    this.kapak = 0;         // anlık göz kırpma 0..1
+    this.tabanKapak = 0;    // mimikten gelen sabit kısıklık
+    this.agiz = 0;          // 0 kapalı, 1 açık
     this.kasL = 0; this.kasR = 0;
     this.konusuyor = false;
-    this.dogus = 0;                 // 0→1 materyalizasyon
+    this.dogus = 0;         // 0→1 materyalizasyon
+
     this.t0 = performance.now();
+    this.sonKare = this.t0;
+    this.C = 0.3;           // anlık berraklık (nefes)
+
+    // Renkler — uygulamanın altın kimliğiyle aynı dilde
+    this.SPR_ALTIN = this._sprite('201,168,76');
+    this.SPR_ISIK  = this._sprite('236,209,138');
+    this.SPR_NUR   = this._sprite('255,246,224');
+
     this._kur();
     this._boyut();
-    window.addEventListener('resize', () => this._boyut());
+    this._resizeBound = () => this._boyut();
+    window.addEventListener('resize', this._resizeBound);
     this._dongu = this._dongu.bind(this);
     requestAnimationFrame(this._dongu);
     this._gezZamanla();
+  }
+
+  /* --- tek seferlik ışık lekesi dokusu: her kare gradient üretmek pahalı --- */
+  _sprite(renk) {
+    const s = 64, c = document.createElement('canvas');
+    c.width = c.height = s;
+    const g = c.getContext('2d');
+    const gr = g.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+    gr.addColorStop(0,    `rgba(${renk},1)`);
+    gr.addColorStop(0.30, `rgba(${renk},0.40)`);
+    gr.addColorStop(0.65, `rgba(${renk},0.10)`);
+    gr.addColorStop(1,    `rgba(${renk},0)`);
+    g.fillStyle = gr;
+    g.fillRect(0, 0, s, s);
+    return c;
   }
 
   _boyut() {
@@ -2976,199 +3118,222 @@ class DumanYuz {
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
-  // Yüz kütlesini ve saç/alev hüzmelerini tanımla
   _kur() {
     const rnd = (a, b) => a + Math.random() * (b - a);
-    // yüz kütlesi: eliptik dağılımda lekeler (merkeze yoğun)
-    for (let i = 0; i < 150; i++) {
+    // Cihaz gücüne göre tanecik sayısı — mobilde kare hızı düşmesin
+    const dar = Math.min(window.innerWidth, window.innerHeight) < 700;
+    const N = this.o.tamEkran ? (dar ? 460 : 820) : (dar ? 260 : 420);
+
+    this.tanecik = [];
+    for (let i = 0; i < N; i++) {
       const a = Math.random() * Math.PI * 2;
-      const k = Math.pow(Math.random(), 0.62);   // merkeze yığ
-      this.blobs.push({
-        ax: Math.cos(a) * k * 0.92,   // -1..1 normalize
-        ay: Math.sin(a) * k * 1.16,
-        r: rnd(0.13, 0.30),
+      const k = Math.pow(Math.random(), 0.55);
+      this.tanecik.push({
+        u: Math.cos(a) * k * 1.35,        // yüz yarıçapına göre normalize konum
+        v: Math.sin(a) * k * 1.55,
+        hu: 0, hv: 0,                     // hız
+        r: rnd(0.030, 0.105),             // leke yarıçapı (R çarpanı)
+        p: rnd(0.35, 1.0),                // parlaklık katsayısı
         faz: Math.random() * Math.PI * 2,
-        hiz: rnd(0.25, 0.75),
-        salin: rnd(0.02, 0.075),
-        op: rnd(0.04, 0.115)
+        cins: Math.random() < 0.14 ? 1 : 0 // 1: sıcak ışık, 0: altın
       });
     }
-    // dışa doğru dağılan hüzmeler (saç/ışık)
-    for (let i = 0; i < 52; i++) {
-      // dikey ağırlıklı: yukarı (saç) ve aşağı (sakal ışıması) akan hüzmeler
-      const yukari = Math.random() < 0.62;
-      const a = (yukari ? -Math.PI / 2 : Math.PI / 2) + (Math.random() - 0.5) * 1.15;
-      this.wisps.push({
-        a, uz: rnd(0.95, 1.8), r: rnd(0.06, 0.15),
-        faz: Math.random() * Math.PI * 2, hiz: rnd(0.3, 0.9),
-        op: rnd(0.035, 0.11)
+
+    // Yükselen zerreler — atmosfer
+    this.zerre = [];
+    const Z = this.o.tamEkran ? (dar ? 22 : 44) : 16;
+    for (let i = 0; i < Z; i++) {
+      this.zerre.push({
+        u: rnd(-1.9, 1.9), v: rnd(-1.7, 1.9),
+        h: rnd(0.020, 0.075), r: rnd(0.012, 0.038),
+        op: rnd(0.05, 0.20), faz: Math.random() * Math.PI * 2
       });
     }
   }
 
   _gezZamanla() {
-    // ekranda yeni bir noktaya süzül
     const g = this.o.gez;
     this.gezHedef.x = (Math.random() * 2 - 1) * g;
-    this.gezHedef.y = (Math.random() * 2 - 1) * g * 0.55;
-    setTimeout(() => this._gezZamanla(), 3600 + Math.random() * 3400);
+    this.gezHedef.y = (Math.random() * 2 - 1) * g * 0.5;
+    this._gezT = setTimeout(() => this._gezZamanla(), 4200 + Math.random() * 3600);
   }
 
+  /* --- dışarıya açık API (eski sınıfla birebir aynı) --- */
   bakisAyarla(nx, ny) { this.hedef.x = nx; this.hedef.y = ny; }
   kasAyarla(l, r) { this.kasL = l; this.kasR = r; }
   kapakAyarla(v) { this.tabanKapak = v; }
   kirp() {
     if (this._kirpiyor) return;
     this._kirpiyor = true;
-    const bas = performance.now();
-    const sur = 190;
+    const bas = performance.now(), sur = 240;
     const ad = () => {
       const p = (performance.now() - bas) / sur;
       if (p >= 1) { this.kapak = 0; this._kirpiyor = false; return; }
-      this.kapak = Math.sin(p * Math.PI);   // 0→1→0
+      this.kapak = Math.sin(p * Math.PI);
       requestAnimationFrame(ad);
     };
     ad();
   }
+  yokEt() {
+    this._olu = true;
+    clearTimeout(this._gezT);
+    window.removeEventListener('resize', this._resizeBound);
+  }
 
-  // yumuşak ışık lekesi çiz
-  _leke(x, y, r, op, renk) {
-    const g = this.ctx.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0, `rgba(${renk},${op})`);
-    g.addColorStop(0.45, `rgba(${renk},${op * 0.45})`);
-    g.addColorStop(1, `rgba(${renk},0)`);
-    this.ctx.fillStyle = g;
-    this.ctx.beginPath();
-    this.ctx.arc(x, y, r, 0, Math.PI * 2);
-    this.ctx.fill();
+  /* --- SÎMÂ ALANI: her noktanın "yüze aitlik" değeri, -1..1 --------------
+     Pozitif = ışık toplanır. Negatif = boşluk (göz oyuğu, ağız).
+     Hiçbir kontur, hiçbir çizgi yok; yüz tamamen bu alandan doğar.       */
+  _alan(u, v, t) {
+    // 1) baş zarfı — yumuşak kenarlı oval
+    const d = Math.hypot(u / 0.80, v / 1.02);
+    let s = 1 - d;
+    s = s > 0 ? Math.min(1, s * 1.9) : Math.max(-0.55, s * 0.7);
+
+    // 2) göz boşlukları — bakışla kayar, kırpınca dolar
+    const kap = Math.min(1, this.kapak + this.tabanKapak);
+    const gu = 0.335 + this.bak.x * 0.020;
+    const gv = -0.180 + this.bak.y * 0.030;
+    const gd = (1 - kap * 0.92);
+    const kasN = (yon) => (yon < 0 ? this.kasL : this.kasR) * 0.012;
+    for (const yon of [-1, 1]) {
+      const de = Math.hypot((u - yon * gu) / 0.215, (v - gv + kasN(yon)) / 0.135);
+      if (de < 1.7) s -= 1.35 * gd * Math.pow(Math.max(0, 1 - de / 1.7), 1.4);
+    }
+
+    // 3) ağız boşluğu — konuşurken genişler ve dalgalanır
+    const ag = this.agiz;
+    const dalga = Math.sin(u * 8.5 - t * 9) * ag * 0.022;
+    const mh = 0.062 + ag * 0.115;
+    const dm = Math.hypot(u / (0.285 + ag * 0.055), (v - 0.505 - dalga) / mh);
+    if (dm < 1.8) s -= (0.85 + ag * 0.55) * Math.pow(Math.max(0, 1 - dm / 1.8), 1.3);
+
+    // 4) alın ışığı — yüzün üst kütlesini biraz ağırlaştırır (hat değil, kütle)
+    const fa = Math.hypot(u / 0.52, (v + 0.62) / 0.30);
+    if (fa < 1) s += 0.30 * (1 - fa);
+
+    return Math.max(-1, Math.min(1.25, s));
   }
 
   _dongu(now) {
+    if (this._olu) return;
     const t = (now - this.t0) / 1000;
+    let dt = (now - this.sonKare) / 1000;
+    this.sonKare = now;
+    if (!(dt > 0) || dt > 0.1) dt = 0.016;
+
     const ctx = this.ctx, w = this.w, h = this.h;
     if (!w) { requestAnimationFrame(this._dongu); return; }
 
-    // materyalizasyon
-    if (this.dogus < 1) this.dogus = Math.min(1, this.dogus + 0.006);
+    if (this.dogus < 1) this.dogus = Math.min(1, this.dogus + dt * 0.38);
     const D = this.dogus;
+    const Dy = D * D * (3 - 2 * D);   // yumuşatılmış doğuş
 
-    // gezinme yumuşatma
-    this.gezSu.x += (this.gezHedef.x - this.gezSu.x) * 0.012;
-    this.gezSu.y += (this.gezHedef.y - this.gezSu.y) * 0.012;
-    // bakış yumuşatma
-    this.bak.x += (this.hedef.x - this.bak.x) * 0.07;
-    this.bak.y += (this.hedef.y - this.bak.y) * 0.07;
+    // NEFES: yüz belirginlikten dağılmaya, oradan geri gelir (~11 sn)
+    // Konuşurken berraklık kilitlenir — üstat konuşurken kaybolmaz.
+    const azHareket = window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const nefes = azHareket ? 0.82
+      : 0.30 + 0.62 * (0.5 + 0.5 * Math.sin(t * 0.57 - 1.2));
+    const hedefC = this.konusuyor ? 0.92 : nefes;
+    this.C += (hedefC - this.C) * Math.min(1, dt * 1.6);
+    const C = this.C * Dy;
 
-    const R = Math.min(w, h) * 0.30 * this.o.olcek;      // yüz yarıçapı
-    const cx = w / 2 + this.gezSu.x * w * 0.30 + Math.sin(t * 0.31) * R * 0.05;
-    const cy = h / 2 + this.gezSu.y * h * 0.30 + Math.sin(t * 0.47) * R * 0.04;
+    this.gezSu.x += (this.gezHedef.x - this.gezSu.x) * Math.min(1, dt * 0.55);
+    this.gezSu.y += (this.gezHedef.y - this.gezSu.y) * Math.min(1, dt * 0.55);
+    this.bak.x += (this.hedef.x - this.bak.x) * Math.min(1, dt * 3.4);
+    this.bak.y += (this.hedef.y - this.bak.y) * Math.min(1, dt * 3.4);
 
-    ctx.clearRect(0, 0, w, h);
+    const R = Math.min(w, h) * 0.32 * this.o.olcek;
+    const cx = w / 2 + this.gezSu.x * w * 0.26 + Math.sin(t * 0.27) * R * 0.045;
+    const cy = h / 2 + this.gezSu.y * h * 0.24 + Math.sin(t * 0.41) * R * 0.035;
+
+    // İz bırakarak sil — saydamlığı koruyan sönümleme
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = 'rgba(0,0,0,0.135)';
+    ctx.fillRect(0, 0, w, h);
+
     ctx.globalCompositeOperation = 'lighter';
 
-    const MAVI = '186,214,245';
-    const BEYAZ = '235,246,255';
+    // --- hâle: başın arkasındaki soluk ışık halkası -----------------------
+    const hal = ctx.createRadialGradient(cx, cy - R * 0.05, R * 0.15, cx, cy - R * 0.05, R * 1.55);
+    hal.addColorStop(0,    `rgba(201,168,76,${0.052 * Dy})`);
+    hal.addColorStop(0.42, `rgba(139,105,20,${0.030 * Dy})`);
+    hal.addColorStop(1,    'rgba(139,105,20,0)');
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = hal;
+    ctx.fillRect(cx - R * 1.6, cy - R * 1.7, R * 3.2, R * 3.3);
 
-    // 1) dikey ışık saçakları (referanstaki saç ışıması) — yukarı ve aşağı akar
-    for (const s of this.wisps) {
-      const sal = Math.sin(t * s.hiz + s.faz);
-      const uz = s.uz + sal * 0.10;
-      const x = cx + Math.cos(s.a) * R * 0.72 * (0.5 + s.uz * 0.4);
-      const y = cy + Math.sin(s.a) * R * uz * 1.45;
-      this._leke(x, y, R * s.r * (1.5 + sal * 0.25), s.op * D, MAVI);
+    // --- zerreler: yükselen toz ------------------------------------------
+    for (const z of this.zerre) {
+      z.v -= z.h * dt;
+      if (z.v < -1.8) { z.v = 1.9; z.u = (Math.random() * 2 - 1) * 1.9; }
+      const yan = Math.sin(t * 0.5 + z.faz) * 0.06;
+      const x = cx + (z.u + yan) * R, y = cy + z.v * R;
+      const rr = R * z.r * (1 + Math.sin(t * 1.1 + z.faz) * 0.2);
+      ctx.globalAlpha = z.op * Dy * (0.4 + C * 0.6);
+      ctx.drawImage(this.SPR_ALTIN, x - rr, y - rr, rr * 2, rr * 2);
     }
 
-    // 2) yüz kütlesi — dar oval, süzülen lekeler
-    for (const b of this.blobs) {
-      const sx = Math.sin(t * b.hiz + b.faz) * b.salin;
-      const sy = Math.cos(t * b.hiz * 0.8 + b.faz) * b.salin;
-      const x = cx + (b.ax * 0.74 + sx) * R;
-      const y = cy + (b.ay * 1.06 + sy) * R * 1.12;
-      this._leke(x, y, R * b.r * 1.35, b.op * D, MAVI);
+    // --- sîmâ örtüsü: akış alanında süzülen ışık ------------------------
+    const dag = 1 - C;                 // dağılma oranı
+    const grad = 0.055;                // alan eğimi örnekleme adımı
+    for (const p of this.tanecik) {
+      // akış alanı (ucuz sözde-curl)
+      const ang = (Math.sin(p.u * 2.05 + t * 0.30) +
+                   Math.cos(p.v * 1.72 - t * 0.24) +
+                   Math.sin((p.u + p.v) * 1.28 + t * 0.16 + p.faz * 0.3)) * 1.7;
+      let fx = Math.cos(ang) * 0.055, fy = Math.sin(ang) * 0.055 - 0.012;
+
+      // alan eğimine doğru çekim: berraklık arttıkça yüz kendini toplar
+      const a0 = this._alan(p.u, p.v, t);
+      const ax = this._alan(p.u + grad, p.v, t) - a0;
+      const ay = this._alan(p.u, p.v + grad, t) - a0;
+      const cek = 0.95 * C;
+      fx += ax * cek; fy += ay * cek;
+
+      // merkeze dönüş — sürüklenip kaybolmasınlar
+      const uz = Math.hypot(p.u / 1.15, p.v / 1.35);
+      if (uz > 1) { fx -= (p.u / 1.15) * (uz - 1) * 0.30; fy -= (p.v / 1.35) * (uz - 1) * 0.30; }
+
+      p.hu = (p.hu + fx * dt * 3.4) * 0.955;
+      p.hv = (p.hv + fy * dt * 3.4) * 0.955;
+      p.u += p.hu * dt * 1.5;
+      p.v += p.hv * dt * 1.5;
+
+      // parlaklık: yüze ait olduğu ölçüde parlar. Boşlukta sönümlenir.
+      const ait = this._alan(p.u, p.v, t);
+      if (ait <= 0.02) continue;                    // göz/ağız oyuğu: hiç çizme
+      const yog = Math.pow(Math.min(1, ait), 1.25);
+      const op = p.p * Dy * (0.055 + yog * (0.10 + C * 0.30));
+      if (op < 0.012) continue;
+
+      const nb = Math.sin(t * 1.6 + p.faz) * 0.18 + 1;
+      const rr = R * p.r * nb * (1 + dag * 0.55) * (0.75 + yog * 0.75);
+      const x = cx + p.u * R, y = cy + p.v * R;
+
+      ctx.globalAlpha = Math.min(0.9, op);
+      ctx.drawImage(p.cins ? this.SPR_ISIK : this.SPR_ALTIN, x - rr, y - rr, rr * 2, rr * 2);
     }
 
-    // yol boyunca leke dizerek "ışık fırçası" — heykelsi hatların temeli
-    const firca = (pts, r, op, renk) => {
-      for (let i = 0; i < pts.length - 1; i++) {
-        const [x1, y1] = pts[i], [x2, y2] = pts[i + 1];
-        const seg = Math.max(2, Math.hypot(x2 - x1, y2 - y1) / (r * 0.5));
-        for (let j = 0; j <= seg; j++) {
-          const p = j / seg;
-          this._leke(x1 + (x2 - x1) * p, y1 + (y2 - y1) * p, r, op * D, renk);
-        }
+    // --- NÛR: gözlerin yerindeki iki ışık. Tek "uzuv" bu. ---------------
+    const kap = Math.min(1, this.kapak + this.tabanKapak);
+    const acik = Math.max(0, 1 - kap);
+    if (acik > 0.03) {
+      const nu = 0.335 + this.bak.x * 0.060;
+      const nv = -0.180 + this.bak.y * 0.055;
+      for (const yon of [-1, 1]) {
+        const nx = cx + yon * nu * R, ny = cy + nv * R;
+        const cn = 0.5 + 0.5 * Math.sin(t * (yon > 0 ? 1.27 : 1.05) + (yon > 0 ? 0 : 1.9));
+        const taban = R * 0.085 * acik * (0.72 + cn * 0.42) * (0.55 + C * 0.65);
+        ctx.globalAlpha = (0.16 + C * 0.30) * Dy * acik;
+        ctx.drawImage(this.SPR_ALTIN, nx - taban * 3.1, ny - taban * 3.1, taban * 6.2, taban * 6.2);
+        ctx.globalAlpha = (0.30 + C * 0.52) * Dy * acik;
+        ctx.drawImage(this.SPR_NUR, nx - taban, ny - taban, taban * 2, taban * 2);
       }
-    };
-    const egri = (x0, y0, cx1, cy1, x1, y1, n) => {
-      const out = [];
-      for (let i = 0; i <= n; i++) {
-        const p = i / n, q = 1 - p;
-        out.push([q * q * x0 + 2 * q * p * cx1 + p * p * x1,
-                  q * q * y0 + 2 * q * p * cy1 + p * p * y1]);
-      }
-      return out;
-    };
+    }
 
-    const gz = R * 0.34;                 // gözler arası yarı mesafe (daha dar, insansı)
-    const gy = cy - R * 0.18;
-    const bx = this.bak.x, by = this.bak.y;
-
-    // 3) KAŞLAR — belirgin kemer, mimikle oynar
-    const kasCiz = (yon, kalk) => {
-      const ox = cx + yon * gz, oy = gy - R * 0.17 - kalk * R * 0.015;
-      firca(egri(ox - yon * R * 0.20, oy + R * 0.03,
-                 ox, oy - R * 0.055,
-                 ox + yon * R * 0.19, oy + R * 0.045, 8), R * 0.045, 0.16, BEYAZ);
-    };
-    kasCiz(-1, this.kasL); kasCiz(1, this.kasR);
-
-    // 4) GÖZLER — oyuk, kenarları parlayan badem (referans gibi)
-    const kapakToplam = Math.min(1, this.kapak + this.tabanKapak);
-    const gozCiz = (yon) => {
-      const ex = cx + yon * gz + bx * R * 0.045;
-      const ey = gy + by * R * 0.035;
-      const acik = 1 - kapakToplam;
-      if (acik <= 0.06) return;
-      const rw = R * 0.155, rh = R * 0.085 * acik;
-      // iç boşluk ışıması
-      this._leke(ex, ey, rw * 1.15, 0.30 * acik * D, BEYAZ);
-      // parlak kenar çizgisi (badem konturu)
-      const N = 30;
-      for (let i = 0; i < N; i++) {
-        const a = (i / N) * Math.PI * 2;
-        this._leke(ex + Math.cos(a) * rw, ey + Math.sin(a) * rh, R * 0.034, 0.34 * acik * D, '255,255,255');
-      }
-      // çekirdek parlaklık
-      const g = ctx.createRadialGradient(ex, ey, 0, ex, ey, rw);
-      g.addColorStop(0, `rgba(255,255,255,${0.85 * acik * D})`);
-      g.addColorStop(0.55, `rgba(225,240,255,${0.4 * acik * D})`);
-      g.addColorStop(1, 'rgba(190,220,246,0)');
-      ctx.fillStyle = g;
-      ctx.beginPath(); ctx.ellipse(ex, ey, rw, rh, 0, 0, Math.PI * 2); ctx.fill();
-    };
-    gozCiz(-1); gozCiz(1);
-
-    // 5) BURUN — köprü ışığı + uç
-    firca([[cx, gy + R * 0.04], [cx + bx * R * 0.015, gy + R * 0.42]], R * 0.035, 0.10, BEYAZ);
-    this._leke(cx, gy + R * 0.47, R * 0.075, 0.14, BEYAZ);
-    this._leke(cx - R * 0.085, gy + R * 0.475, R * 0.045, 0.10, MAVI);
-    this._leke(cx + R * 0.085, gy + R * 0.475, R * 0.045, 0.10, MAVI);
-
-    // 6) DUDAKLAR — dolgun, iki katlı (referansın imzası), konuşunca açılır
-    const ag = this.agiz;                       // 0..1
-    const my = gy + R * 0.70;
-    // üst dudak: iki kavis (M biçimi)
-    firca(egri(cx - R * 0.20, my, cx - R * 0.095, my - R * (0.055 + ag * 0.02), cx, my - R * 0.012, 8), R * 0.052, 0.22, BEYAZ);
-    firca(egri(cx, my - R * 0.012, cx + R * 0.095, my - R * (0.055 + ag * 0.02), cx + R * 0.20, my, 8), R * 0.052, 0.22, BEYAZ);
-    // alt dudak: dolgun tek kavis, konuşunca aşağı iner
-    firca(egri(cx - R * 0.185, my + R * 0.012, cx, my + R * (0.115 + ag * 0.14), cx + R * 0.185, my + R * 0.012, 10), R * 0.062, 0.26, BEYAZ);
-    // dudak arası gölge hattı (hafif mavi, ayırt edici)
-    firca([[cx - R * 0.17, my + R * 0.004], [cx + R * 0.17, my + R * 0.004]], R * 0.022, 0.10, MAVI);
-
-    // 7) çene ve elmacık ışıkları (heykelsilik)
-    this._leke(cx, my + R * 0.30, R * 0.16, 0.06, MAVI);
-    this._leke(cx - R * 0.33, gy + R * 0.34, R * 0.13, 0.05, MAVI);
-    this._leke(cx + R * 0.33, gy + R * 0.34, R * 0.13, 0.05, MAVI);
-
+    ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
     requestAnimationFrame(this._dongu);
   }
@@ -3381,7 +3546,7 @@ const UstadSes = {
     if (sesle) UstadSes.soyle('Nice yüz gördüm bu aynada. Şimdi sıra sende.', introYuz);
     try { sessionStorage.setItem('sima_intro', '1'); } catch (e) {}
     intro.classList.add('gizle');
-    setTimeout(() => { intro.remove(); introYuz = null; }, 1200);
+    setTimeout(() => { intro.remove(); if (introYuz) introYuz.yokEt(); introYuz = null; }, 1200);
     baslatInline();
   }
   btn.addEventListener('click', () => acilisiKapat(true));
