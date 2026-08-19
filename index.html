@@ -1494,7 +1494,7 @@
     <div class="upload-icon">◉</div>
     <div class="upload-text">Yüz fotoğrafı yükleyin</div>
     <div class="upload-hint">Ön cepheden · dokunun veya sürükleyin</div>
-    <input type="file" id="fileInput" accept="image/*">
+    <input type="file" id="fileInput" accept="image/*" capture="user">
   </div>
 
   <!-- İsteğe bağlı profil açıları -->
@@ -1727,6 +1727,30 @@
 <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"
         onerror="this.onerror=null; const s=document.createElement('script'); s.src='https://unpkg.com/@vladmandic/face-api/dist/face-api.js'; document.head.appendChild(s);"></script>
 <script>
+// ---- Cihaz kimliği: kota sisteminin çalışması için her isteğe eklenir ----
+(function cihazKimligi() {
+  let cid = null;
+  try { cid = localStorage.getItem('sima_cid'); } catch (e) {}
+  if (!cid) {
+    cid = (window.crypto && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : 'c-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
+    try { localStorage.setItem('sima_cid', cid); } catch (e) {}
+  }
+  const asilFetch = window.fetch.bind(window);
+  window.fetch = function (girdi, secenek) {
+    secenek = secenek || {};
+    // Sadece kendi sunucumuza giden isteklere ekle (CDN'lere bulaşmasın).
+    const adres = (typeof girdi === 'string') ? girdi : (girdi && girdi.url) || '';
+    if (adres.startsWith('/')) {
+      const h = new Headers(secenek.headers || {});
+      h.set('X-Sima-Cihaz', cid);
+      secenek.headers = h;
+    }
+    return asilFetch(girdi, secenek);
+  };
+})();
+
 // ---- Yıldız alanı animasyonu ----
 (function initStarfield() {
   const canvas = document.getElementById('starfield');
@@ -2247,12 +2271,12 @@ async function analyze() {
       }
       throw new Error('Sunucudan beklenmeyen cevap (durum ' + res.status + '). Tekrar dene.');
     }
-    if (data.error) throw new Error(data.error);
+    if (data.error) throw new Error(data.mesaj || data.error);
     lastReading = data;
     Sound.reveal();
     renderResults(data);
   } catch (err) {
-    showError('Hata: ' + err.message);
+    showError(err.message);
     console.error(err);
   } finally {
     loadingEl.style.display = 'none';
@@ -2423,10 +2447,10 @@ karmaSubmitBtn.addEventListener('click', async () => {
         throw new Error('Okuma çok uzun sürdü ve sunucu yetişemedi. Bu genelde ilk denemede olur — 20 saniye bekleyip tekrar dene.');
       throw new Error('Sunucudan beklenmeyen cevap (durum ' + res.status + ').');
     }
-    if (data.error) throw new Error(data.error);
+    if (data.error) throw new Error(data.mesaj || data.error);
     renderKarma(data);
   } catch (err) {
-    showError('Hata: ' + err.message);
+    showError(err.message);
     console.error(err);
   } finally {
     loadingEl.style.display = 'none';
@@ -2844,11 +2868,11 @@ document.getElementById('matchBtn').addEventListener('click', async () => {
         throw new Error('Sunucu cevap veremedi (zaman aşımı). Birkaç saniye sonra dene.');
       throw new Error('Sunucudan beklenmeyen cevap (durum ' + res.status + ').');
     }
-    if (data.error) throw new Error(data.error);
+    if (data.error) throw new Error(data.mesaj || data.error);
     Sound.reveal();
     renderMatch(data);
   } catch (err) {
-    showError('Hata: ' + err.message);
+    showError(err.message);
     console.error(err);
   } finally {
     loadingEl.style.display = 'none';
@@ -3264,17 +3288,37 @@ const UstadSes = {
     }
   },
 
-  async soyle(metin, yuz) {
-    // Önce ElevenLabs dene (doğal ses)
+  soyle(metin, yuz) {
+    // ÖNEMLİ: Tarayıcı sesini HER ZAMAN önce, senkron başlatıyoruz. Sebebi teknik:
+    // iOS gibi tarayıcılar, bir "await" sonrası (yani kullanıcı dokunuşundan bir adım
+    // uzaklaşmış anda) çağrılan konuşmayı SESSİZCE engelliyor — hata bile vermiyor.
+    // Bu yüzden garantili ses için önce senkron tarayıcı sesini başlatıp, ElevenLabs'i
+    // paralelde deniyoruz; hızlı gelirse tarayıcı sesini kesip ona geçiyoruz.
+    const basladiZaman = performance.now();
+    const tarayiciBasladiMi = this.tarayiciyla(metin, yuz);
+    this._elevenDene(metin, yuz, tarayiciBasladiMi, basladiZaman);
+    return tarayiciBasladiMi;
+  },
+
+  async _elevenDene(metin, yuz, tarayiciCalisiyorMu, basladiZaman) {
     try {
       const res = await fetch('/ses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: metin }),
       });
-      if (!res.ok) throw new Error('ses servisi kullanılamıyor');
+      if (!res.ok) return;   // ElevenLabs kurulmadı/başarısız — tarayıcı sesi zaten çalıyor, sessizce vazgeç
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
+
+      // Tarayıcı sesi hâlâ konuşuyorsa ve çok ilerlemediyse kes, ElevenLabs'e geç
+      const gecenSure = performance.now() - basladiZaman;
+      if (tarayiciCalisiyorMu && 'speechSynthesis' in window && gecenSure < 4000) {
+        window.speechSynthesis.cancel();
+      } else if (tarayiciCalisiyorMu && gecenSure >= 4000) {
+        URL.revokeObjectURL(url);   // tarayıcı sesi zaten bitmek üzere, karışıklığa gerek yok
+        return;
+      }
       if (this._audioEl) { this._audioEl.pause(); }
       const audio = new Audio(url);
       this._audioEl = audio;
@@ -3282,10 +3326,8 @@ const UstadSes = {
       audio.addEventListener('ended', () => { if (yuz) { yuz.agiz = 0; yuz.konusuyor = false; } ustadExpress('memnun'); URL.revokeObjectURL(url); });
       if (this._ctx && this._ctx.state === 'suspended') this._ctx.resume();
       await audio.play();
-      return true;
     } catch (e) {
-      // ElevenLabs kurulmadıysa/başarısızsa sessizce tarayıcı sesine düş
-      return this.tarayiciyla(metin, yuz);
+      // ElevenLabs kurulmadıysa/ağ hatası varsa sessizce vazgeç — tarayıcı sesi zaten devrede
     }
   }
 };
@@ -3451,7 +3493,7 @@ async function fetchDaily(birth) {
     let data;
     try { data = JSON.parse(raw); }
     catch (e) { throw new Error('Sunucu yanıtı okunamadı (durum ' + res.status + ').'); }
-    if (data.error) throw new Error(data.error);
+    if (data.error) throw new Error(data.mesaj || data.error);
     localStorage.setItem(DAILY_CACHE, JSON.stringify({ date: todayStr(), data }));
     showDaily(data);
   } catch (err) {
