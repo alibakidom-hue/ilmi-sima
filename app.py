@@ -19,6 +19,8 @@ import urllib.error
 from flask import Flask, request, jsonify, send_from_directory, Response
 import anthropic
 
+from guard import korumali, kaydet_kullanim, guard_durum
+
 # Doğum haritası hesabı (Moshier efemerisi — dış veri/internet gerektirmez)
 try:
     import swisseph as swe
@@ -364,9 +366,11 @@ client = anthropic.Anthropic(api_key=API_KEY)
 # Vision destekli model.
 # Daha ucuz istersen: "claude-haiku-4-5-20251001"
 MODEL = "claude-sonnet-4-6"
+# Ucuz uçlar (günlük kıraat, eşleşme) buradan geçer — maliyetin 1/3'ü.
+MODEL_UCUZ = "claude-haiku-4-5-20251001"
 
 
-def gemini_json(parts, schema, max_tokens):
+def gemini_json(parts, schema, max_tokens, uc="?", model=None):
     """İçerik parçalarını modele gönderip yapılandırılmış JSON döndürür.
     parts: metin (str) ve/veya image_part() ile üretilmiş görsel bloklarından oluşan liste.
     schema: beklenen JSON şeması (dict).
@@ -383,13 +387,19 @@ def gemini_json(parts, schema, max_tokens):
         "input_schema": schema,
     }
     message = client.messages.create(
-        model=MODEL,
+        model=model or MODEL,
         max_tokens=max_tokens,
         temperature=1.0,
         tools=[tool],
         tool_choice={"type": "tool", "name": "yapilandirilmis_cevap"},
         messages=[{"role": "user", "content": content}],
     )
+    # Gerçek token kullanımını maliyet sayacına yaz (tahmin değil).
+    try:
+        kaydet_kullanim(model or MODEL, message.usage.input_tokens,
+                        message.usage.output_tokens, uc=uc)
+    except Exception:
+        pass
     for block in message.content:
         if block.type == "tool_use" and block.name == "yapilandirilmis_cevap":
             return block.input
@@ -545,6 +555,7 @@ def index():
 
 
 @app.route("/analyze", methods=["POST"])
+@korumali("analyze")
 def analyze():
     try:
         data = request.get_json()
@@ -560,7 +571,7 @@ def analyze():
                       image_part(hand, data.get("mediaTypeHand", "image/jpeg"))]
 
         prompt = SIMA_PROMPT + (MULTI_ANGLE_NOTE if n_angles > 1 else "")
-        result = gemini_json(parts + [prompt], SIMA_TOOL["input_schema"], 3400)
+        result = gemini_json(parts + [prompt], SIMA_TOOL["input_schema"], 3400, uc="analyze")
 
         if result is None:
             return jsonify({"error": "Model analiz üretmedi, tekrar dene."}), 502
@@ -668,6 +679,7 @@ KARMA_TOOL = {
 
 
 @app.route("/karma", methods=["POST"])
+@korumali("karma")
 def karma():
     try:
         data = request.get_json()
@@ -757,6 +769,7 @@ gibi yargı DEĞİL. Yalnızca istenen JSON yapısında cevap ver."""
             karma_parts + [karma_prompt + (MULTI_ANGLE_NOTE if karma_angles > 1 else "")],
             KARMA_TOOL["input_schema"],
             4500,
+            uc="karma",
         )
 
         if result is None:
@@ -806,6 +819,7 @@ GUNLUK_TOOL = {
 
 
 @app.route("/gunluk", methods=["POST"])
+@korumali("gunluk", agir=False)
 def gunluk():
     try:
         data = request.get_json()
@@ -838,7 +852,8 @@ Bugünün tarihini ve kişinin haritasını/ebcedini harmanla; her gün farklı,
 özgü bir yorum olsun (genel geçer değil). Sıcak, klasik ama anlaşılır bir üslup kullan. \
 Bu eğlence ve kültürel bir uygulamadır. Yalnızca istenen JSON yapısında cevap ver."""
 
-        result = gemini_json([prompt], GUNLUK_TOOL["input_schema"], 800)
+        result = gemini_json([prompt], GUNLUK_TOOL["input_schema"], 800,
+                             uc="gunluk", model=MODEL_UCUZ)
         if result is None:
             return jsonify({"error": "Kıraat üretilemedi, tekrar dene."}), 502
         return jsonify(result)
@@ -893,66 +908,8 @@ bunu kıraatte nazikçe belirt. Bu eğlence ve kültürel bir uygulamadır; tıb
 Yalnızca istenen JSON yapısında cevap ver."""
 
 
-@app.route("/el", methods=["POST"])
-def el():
-    try:
-        data = request.get_json()
-        image_b64 = data.get("image")
-        media_type = data.get("mediaType", "image/jpeg")
-        if not image_b64:
-            return jsonify({"error": "El görseli bulunamadı"}), 400
-
-        result = gemini_json(
-            [image_part(image_b64, media_type), EL_PROMPT],
-            EL_TOOL["input_schema"],
-            1500,
-        )
-        if result is None:
-            return jsonify({"error": "El okuması üretilemedi, tekrar dene."}), 502
-        return jsonify(result)
-
-    except anthropic.APIError as e:
-        return jsonify({"error": f"API hatası: {str(e)}"}), 502
-    except Exception as e:
-        return jsonify({"error": f"Beklenmeyen hata: {str(e)}"}), 500
-
-
-# ---- SÎMÂ EŞLEŞMESİ: iki yüzün firâset uyumu ----
-ESLESME_TOOL = {
-    "name": "sima_eslesme",
-    "description": "İki kişinin sîmâ uyumunu Osmanlı kader anlatısı olarak döndürür.",
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "baslik": {"type": "string", "description": "Bu eşleşmeye özel kısa, çarpıcı başlık (örn: 'Ateş ile Suyun Buluşması')"},
-            "uyum_yuzdesi": {"type": "integer", "description": "Sembolik uyum yüzdesi (0-100), eğlence amaçlı"},
-            "ortak_yonler": {"type": "array", "description": "2-3 ortak/uyumlu yön", "items": {"type": "string"}},
-            "gerilim_noktalari": {"type": "array", "description": "2-3 gerilim/dikkat noktası", "items": {"type": "string"}},
-            "kiraat": {"type": "string", "description": "'Bu iki sîmâ bir araya gelince' anlatısı, 5-6 cümle, klasik Osmanlı üslubu, dengeli ve dürüst"},
-        },
-        "required": ["baslik", "uyum_yuzdesi", "ortak_yonler", "gerilim_noktalari", "kiraat"],
-    },
-}
-
-ESLESME_PROMPT = """Sen firâset (ilm-i sîmâ) üstadısın. Sana İKİ kişinin yüz fotoğrafı \
-verildi: yukarıda 'BİRİNCİ KİŞİ' ve 'İKİNCİ KİŞİ' diye açıkça etiketlendiler. İkisini \
-KARIŞTIRMA; her birinin kendi yüzünü ayrı ayrı, dikkatle incele.
-
-Aralarındaki UYUMU firâset perspektifinden oku: iki mizacın bir araya gelince nasıl bir \
-bütün oluşturduğunu, nerede örtüştüklerini ve nerede gerildiklerini Osmanlı kader anlatısı \
-üslubuyla yaz.
-
-ÇOK ÖNEMLİ - DOĞRULUK: Göz rengi, ten rengi gibi İNCE AYRINTILARDA emin değilsen kesin \
-hüküm verme (fotoğraf ışığı yanıltabilir). Bu tür ayrıntıları ya hiç söyleme ya da \
-'gibi görünüyor' diye temkinli söyle. Yorumun yüzün GENEL HATLARINA (yüz biçimi, ifade, \
-çene, kaş, genel mizaç) dayansın; uydurma ayrıntıya değil.
-
-DENGELİ ve DÜRÜST ol: sadece güzel şeyler değil, gerçek gerilim/uyumsuzluk noktalarını da \
-söyle. Uyum yüzdesi semboliktir, abartma. Bu eğlence ve kültürel bir uygulamadır; gerçek \
-bir ilişki kararı verdirecek kesin iddialarda bulunma. Yalnızca istenen JSON yapısında cevap ver."""
-
-
 @app.route("/eslesme", methods=["POST"])
+@korumali("eslesme")
 def eslesme():
     try:
         data = request.get_json()
@@ -997,6 +954,8 @@ def eslesme():
             ],
             ESLESME_TOOL["input_schema"],
             1900,
+            uc="eslesme",
+            model=MODEL_UCUZ,
         )
         if result is None:
             return jsonify({"error": "Eşleşme üretilemedi, tekrar dene."}), 502
@@ -1092,56 +1051,6 @@ verme, teşhis koyma, organ/rahatsızlık ima etme, tıbbi tavsiye verme. Sağl�
 Bu eğlence ve kültürel bir uygulamadır. Yalnızca istenen JSON yapısında cevap ver."""
 
 
-@app.route("/gelecek", methods=["POST"])
-def gelecek():
-    try:
-        data = request.get_json()
-        parts, n_angles = face_parts(data)
-        if not parts:
-            return jsonify({"error": "Görsel bulunamadı"}), 400
-
-        prompt = GELECEK_PROMPT + (MULTI_ANGLE_NOTE if n_angles > 1 else "")
-
-        # Doğum bilgisi verildiyse haritayı da harmanla (isteğe bağlı)
-        birth = data.get("birth") or {}
-        try:
-            natal = compute_natal(
-                int(birth["year"]), int(birth["month"]), int(birth["day"]),
-                float(birth.get("hour", 12.0)), city=birth.get("city"),
-            )
-        except (TypeError, ValueError, KeyError):
-            natal = None
-        if natal:
-            TEMA_HARITA = {
-                "AŞK": ([5, 7], ["Venüs", "Ay", "Mars"]),
-                "BEREKET": ([2, 8], ["Venüs", "Jüpiter", "Satürn"]),
-                "KARİYER": ([10, 6], ["Satürn", "Güneş", "Mars", "Jüpiter"]),
-                "CANLILIK": ([1, 6], ["Mars", "Güneş", "Ay"]),
-            }
-            blok = ["\n\n=== DOĞUM HARİTASI (AYRINTILI) ===", natal_to_text(natal)]
-            for tema, (evler, gezegenler) in TEMA_HARITA.items():
-                blok.append(f"\n--- {tema} BAŞLIĞI İÇİN İLGİLİ YERLEŞİMLER ---")
-                blok.append(natal_for_topic(natal, evler, gezegenler))
-            blok.append(
-                "\nHER BAŞLIKTA yukarıdaki İLGİLİ YERLEŞİMLERİ kullan: gezegenin hangi "
-                "burçta, KAÇINCI EVDE olduğunu ve açılarını somut olarak yorumla. "
-                "'isaret' alanında hem yüz hattını hem de dayandığın yerleşimi belirt "
-                "(örn: 'kaşların kavisi · Venüs 7. evde, Satürn kare'). "
-                "Sadece burç adı söyleyip geçme — ev ve açı olmadan yorum yüzeysel kalır."
-            )
-            prompt += "\n".join(blok)
-
-        result = gemini_json(parts + [prompt], GELECEK_TOOL["input_schema"], 3600)
-        if result is None:
-            return jsonify({"error": "Kıraat üretilemedi, tekrar dene."}), 502
-        return jsonify(result)
-
-    except anthropic.APIError as e:
-        return jsonify({"error": f"API hatası: {str(e)}"}), 502
-    except Exception as e:
-        return jsonify({"error": f"Beklenmeyen hata: {str(e)}"}), 500
-
-
 # ---- SES: ElevenLabs ile doğal Türkçe erkek sesi ----
 ELEVEN_API_KEY = os.environ.get("ELEVENLABS_API_KEY")
 # Varsayılan: ElevenLabs'in bilinen "Adam" sesi (derin, İngilizce doğal ama çok dilli
@@ -1151,6 +1060,7 @@ ELEVEN_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "pNInz6obpgDQGcFmaJgB")
 
 
 @app.route("/ses", methods=["POST"])
+@korumali("ses", agir=False)
 def ses():
     if not ELEVEN_API_KEY:
         return jsonify({"error": "Ses servisi henüz kurulmamış (ELEVENLABS_API_KEY eksik)."}), 501
@@ -1191,6 +1101,16 @@ def ses():
         return jsonify({"error": f"Ses servisi hatası ({e.code}): {detail[:200]}"}), 502
     except Exception as e:
         return jsonify({"error": f"Beklenmeyen hata: {str(e)}"}), 500
+
+
+@app.route("/_durum")
+def _durum():
+    """Harcama panosu. Render'da DURUM_ANAHTARI ayarla, sonra
+    https://<site>/_durum?k=<anahtar> adresinden bak."""
+    anahtar = os.environ.get("DURUM_ANAHTARI")
+    if not anahtar or request.args.get("k") != anahtar:
+        return "", 404
+    return jsonify(guard_durum())
 
 
 if __name__ == "__main__":
