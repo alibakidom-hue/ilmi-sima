@@ -370,7 +370,7 @@ MODEL = "claude-sonnet-4-6"
 MODEL_UCUZ = "claude-haiku-4-5-20251001"
 
 
-def gemini_json(parts, schema, max_tokens, uc="?", model=None):
+def gemini_json(parts, schema, max_tokens, uc="?", model=None, sicaklik=1.0):
     """İçerik parçalarını modele gönderip yapılandırılmış JSON döndürür.
     parts: metin (str) ve/veya image_part() ile üretilmiş görsel bloklarından oluşan liste.
     schema: beklenen JSON şeması (dict).
@@ -389,7 +389,7 @@ def gemini_json(parts, schema, max_tokens, uc="?", model=None):
     message = client.messages.create(
         model=model or MODEL,
         max_tokens=max_tokens,
-        temperature=1.0,
+        temperature=sicaklik,
         tools=[tool],
         tool_choice={"type": "tool", "name": "yapilandirilmis_cevap"},
         messages=[{"role": "user", "content": content}],
@@ -456,11 +456,28 @@ içini ciddiyetle incele.
 3. GÖZLER (العُيُون) 4. BURUN (الأَنْف) 5. AĞIZ VE DUDAKLAR (الشِّفَاه) 6. ÇENE (الذَّقَن).
 'name' Türkçe adı, 'arabic' Arapça karşılığı olsun.
 
-KISALIK KURALI — ÇOK ÖNEMLİ: 'description' alanı EN FAZLA 2 cümle ve SADECE gözlem \
-(gördüğün hattı ve mizacını somut tarif et). Genel geçer cümle ('zekisin', 'duygusalsın') \
-yasak; ayrımı keskin yaz. 'gelecek' alanı AYRI ve ZORUNLUDUR — gözlemi tekrar etmeden, \
-'bu hat seni ileride ...e taşır' ya da 'bunu törpülemende fayda var' dilinde tek cümle. \
-Bu alanı boş bırakma.
+ÖNCE KANIT, SONRA HÜKÜM — BU KURALIN İHLALİ EN BÜYÜK HATADIR:
+Her okuma yerinde önce 'gozlem' alanını doldur. Buraya SADECE gözünle gördüğünü yaz: oran, \
+asimetri, açı, mesafe, kalınlık, yön. Kişi telefonunu aynaya tutup 'evet, gerçekten öyle' \
+diyebilmeli. Karakter yorumu bu alana GİRMEZ. Sonra 'hukum' alanında o gözlemin mizaç \
+karşılığını tek cümlede söyle. 'description' alanına 'gozlem' ile aynı metni yaz.
+
+BARNUM YASAĞI: Herkese uyan cümle kurmak bu uygulamada en ağır kusurdur. Şunlar YASAK: \
+'hem içine dönük hem dışa dönüksün', 'potansiyelin var ama tam kullanmıyorsun', 'zaman zaman \
+kendinden şüphe edersin', 'güçlü bir kişiliğin var'. Her cümle şu testi geçmeli: bu cümle \
+başka birine söylensin, YANLIŞ olsun. Yanlış olamıyorsa cümle değersizdir, sil ve yeniden yaz.
+
+DÜRÜSTLÜK — GÜVENİN KAYNAĞI: Fotoğrafta bir yer gölgede, kapalı, bulanık ya da açı yüzünden \
+belirsizse UYDURMA. O yeri 'okunamayan' listesine yaz ve o trait'in gözlemini 'bu açıdan net \
+seçilmiyor' diye dürüstçe kur. Emin olmadığını söylemek, yanlış hüküm vermekten çok daha \
+değerlidir — kullanıcı senin uydurmadığını anladığında geri kalanına inanır.
+
+'gelecek' alanı AYRI ve ZORUNLUDUR — gözlemi ve hükmü tekrar etmeden, 'bu hat seni ileride \
+...e taşır' ya da 'bunu törpülemende fayda var' dilinde tek cümle. Bu alanı boş bırakma.
+
+MANŞET: 'hukum_cumlesi' alanına en fazla 12 kelimelik tek bir cümle yaz. Bu cümle kullanıcının \
+göreceği İLK şeydir ve ekran görüntüsü alıp paylaşacağı cümledir. Bir gerilim taşısın — iki \
+zıt şeyi aynı anda söylesin. 'Karar veren ama kararını kimseye açmayan bir sîmâ.' gibi.
 
 EL OKUMA (el fotoğrafı verildiyse): Elin tipini söyle ve ÜÇ ANA ÇİZGİYİ oku — Kalp Çizgisi \
 (duygu yolu), Akıl Çizgisi (zihin yolu), Hayat Çizgisi (canlılık yolu). Fotoğrafta GERÇEKTEN \
@@ -494,10 +511,23 @@ SIMA_TOOL = {
                     "properties": {
                         "name": {"type": "string"},
                         "arabic": {"type": "string"},
+                        "gozlem": {
+                            "type": "string",
+                            "description": "SADECE fiziksel gözlem — kişi aynaya bakıp doğrulayabilmeli. "
+                                           "Oran, asimetri, yön, açı, mesafe, kalınlık. Tek cümle. "
+                                           "Mizaç/karakter YORUMU buraya YAZILMAZ. "
+                                           "İyi: 'Sol kaşın ucu sağdakinden belirgin yukarıda, iç uçlar birbirine yakın.' "
+                                           "Kötü: 'Kaşların kararlılığını gösteriyor.'",
+                        },
+                        "hukum": {
+                            "type": "string",
+                            "description": "Yukarıdaki gözlemin mizaç karşılığı. Tek cümle, gözlemi tekrar etme. "
+                                           "'Zekisin', 'duygusalsın', 'hem içe hem dışa dönüksün' gibi HERKESE "
+                                           "uyan cümleler YASAK — bu kişiye özgü, ayrımı keskin bir şey söyle.",
+                        },
                         "description": {
                             "type": "string",
-                            "description": "Gözlem: en fazla 2 cümle. Sadece gördüğün hattı ve mizacını "
-                                           "tarif et; gelecek/tavsiye buraya YAZMA, o ayrı alanda.",
+                            "description": "Geriye dönük uyumluluk: gozlem alanının aynısını yaz.",
                         },
                         "gelecek": {
                             "type": "string",
@@ -508,7 +538,8 @@ SIMA_TOOL = {
                         },
                         "intensity": {"type": "integer"},
                     },
-                    "required": ["name", "arabic", "description", "gelecek", "intensity"],
+                    "required": ["name", "arabic", "gozlem", "hukum", "description",
+                                 "gelecek", "intensity"],
                 },
             },
             "el": {
@@ -538,13 +569,30 @@ SIMA_TOOL = {
                 },
                 "required": ["el_tipi", "cizgiler", "kiraat"],
             },
+            "hukum_cumlesi": {
+                "type": "string",
+                "description": "TEK cümle, en fazla 12 kelime, noktayla biter. Bu sîmânın özü. "
+                               "Kişi bunu okuduğunda 'beni tarif etti' demeli — ama cümle HERKESE "
+                               "uymamalı. Bir gerilim/çelişki taşısın. "
+                               "İyi: 'Karar veren ama kararını kimseye açmayan bir sîmâ.' "
+                               "Kötü: 'Güçlü ve duyarlı bir kişiliğin var.'",
+            },
+            "okunamayan": {
+                "type": "array",
+                "description": "Bu fotoğraftan GÜVENLE okunamayan yerler. Açı, gölge, saç/gözlük "
+                               "kapatması, çözünürlük yüzünden emin olamadığın her yeri buraya yaz. "
+                               "Hiçbir şey engellemiyorsa boş liste bırak. UYDURMA — emin değilsen "
+                               "yorum üretmek yerine buraya yazmak DAHA DEĞERLİDİR.",
+                "items": {"type": "string"},
+            },
             "overall": {
                 "type": "string",
                 "description": "Bütünsel kıraat, 3-4 cümle, klasik Osmanlı üslubu; yüz (ve varsa el) "
                                "birlikte, geleceğe dönük eğilim diliyle kapanır.",
             },
         },
-        "required": ["dominantTrait", "dominantTraitTR", "traits", "el", "overall"],
+        "required": ["hukum_cumlesi", "dominantTrait", "dominantTraitTR", "traits",
+                     "okunamayan", "el", "overall"],
     },
 }
 
@@ -571,7 +619,8 @@ def analyze():
                       image_part(hand, data.get("mediaTypeHand", "image/jpeg"))]
 
         prompt = SIMA_PROMPT + (MULTI_ANGLE_NOTE if n_angles > 1 else "")
-        result = gemini_json(parts + [prompt], SIMA_TOOL["input_schema"], 3400, uc="analyze")
+        result = gemini_json(parts + [prompt], SIMA_TOOL["input_schema"], 3400,
+                             uc="analyze", sicaklik=0.35)
 
         if result is None:
             return jsonify({"error": "Model analiz üretmedi, tekrar dene."}), 502
@@ -770,6 +819,7 @@ gibi yargı DEĞİL. Yalnızca istenen JSON yapısında cevap ver."""
             KARMA_TOOL["input_schema"],
             4500,
             uc="karma",
+            sicaklik=0.35,
         )
 
         if result is None:
@@ -956,6 +1006,7 @@ def eslesme():
             1900,
             uc="eslesme",
             model=MODEL_UCUZ,
+            sicaklik=0.4,
         )
         if result is None:
             return jsonify({"error": "Eşleşme üretilemedi, tekrar dene."}), 502
