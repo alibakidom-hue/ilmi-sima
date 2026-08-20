@@ -499,6 +499,7 @@ input:focus{outline:none;border-color:var(--cizgi-guclu)}
         <div class="asama">
           <div class="asama-halka"></div>
           <div class="asama-liste" id="asamaListe"></div>
+          <div class="ipucu" id="asamaSure" style="margin-top:22px;font-variant-numeric:tabular-nums"></div>
         </div>
       </div>
 
@@ -981,7 +982,7 @@ class NurYuz {
    İLM-İ SÎMÂ — uygulama katmanı
    ========================================================= */
 
-const SURUM = 'nur-4';
+const SURUM = 'nur-5';
 
 /* ---- ortam sorgusu: her tarayıcıda matchMedia yok ---- */
 function medya(q) {
@@ -1147,7 +1148,7 @@ const CIHAZ = (function () {
 async function cagir(yol, govde, saniye) {
   // Ucretsiz sunucu uykudan uyanirken 50 sn kaybedebiliyor; pay birakiyoruz.
   const kes = new AbortController();
-  const zaman = setTimeout(() => kes.abort(), (saniye || 150) * 1000);
+  const zaman = setTimeout(() => kes.abort(), (saniye || 240) * 1000);
   let r;
   try {
     r = await fetch(yol, {
@@ -1172,6 +1173,13 @@ async function cagir(yol, govde, saniye) {
   if (d.error) throw new Error(d.mesaj || d.error);
   return d;
 }
+
+/* ---- sunucuyu uyandir ----
+   Ucretsiz planda instance 15 dk sessizlikten sonra uyuyor ve ilk istek
+   50+ saniye bekliyor. Uygulama acilir acilmaz hafif bir istek atip
+   uyandiriyoruz; kullanici fotograf secerken sunucu ayaga kalkmis oluyor. */
+function uyandir() { fetch('/_surum', { cache: 'no-store' }).catch(() => {}); }
+uyandir();
 
 /* ---- yerel saklama ---- */
 const D = {
@@ -1356,7 +1364,8 @@ $('anaDosya').addEventListener('change', async e => {
   const f = e.target.files[0]; e.target.value = '';
   if (!f) return;
   try {
-    anaGor = await gorselOku(f, 1024);
+    uyandir();
+    anaGor = await gorselOku(f, 768);
     $('onGor').src = anaGor.url;
     simaDurum('simaHazir');
     $('onGor').onload = () => noktaCiz();
@@ -1376,7 +1385,7 @@ $('ekAc').addEventListener('click', function () {
       const f = e.target.files[0]; e.target.value = '';
       if (!f) return;
       try {
-        const r = await gorselOku(f, kod === 'H' ? 1280 : 1024);
+        const r = await gorselOku(f, kod === 'H' ? 1000 : 768);
         if (kod === 'R') gorR = r; else if (kod === 'L') gorL = r; else gorH = r;
         $(gor).src = r.url;
         $(yuva).classList.add('dolu');
@@ -1413,12 +1422,25 @@ function asamaBaslat() {
       satirlar[i].className = 'asama-sat simdi';
       satirlar[i].querySelector('.im').textContent = '◆';
       i++;
-      asamaT = setTimeout(ilerle, i === 1 ? 3200 : 7000);
+      asamaT = setTimeout(ilerle, i === 1 ? 3200 : 9000);
     }
   };
   ilerle();
 }
-function asamaDurdur() { clearTimeout(asamaT); }
+let sayacT = null;
+function sayacBaslat() {
+  const bas = Date.now();
+  const k = $('asamaSure');
+  clearInterval(sayacT);
+  sayacT = setInterval(() => {
+    const sn = Math.floor((Date.now() - bas) / 1000);
+    k.textContent = sn < 45
+      ? sn + ' sn'
+      : sn + ' sn — sunucu uykudan uyanıyor olabilir, biraz daha sabır.';
+  }, 1000);
+  k.textContent = '0 sn';
+}
+function asamaDurdur() { clearTimeout(asamaT); clearInterval(sayacT); }
 
 $('okuBtn').addEventListener('click', async () => {
   if (!anaGor) return;
@@ -1426,6 +1448,7 @@ $('okuBtn').addEventListener('click', async () => {
   Ses.basla();
   simaDurum('simaOkunuyor');
   asamaBaslat();
+  sayacBaslat();
   try {
     const d = await cagir('/analyze', yukGovde());
     asamaDurdur();
@@ -1733,7 +1756,7 @@ let es1 = null, es2 = null;
     const f = e.target.files[0]; e.target.value = '';
     if (!f) return;
     try {
-      const r = await gorselOku(f, 1024);
+      const r = await gorselOku(f, 768);
       if (n === 1) es1 = r; else es2 = r;
       $(g).src = r.url; $(y).classList.add('dolu');
       $('esOkuBtn').disabled = !(es1 && es2);
