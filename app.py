@@ -20,8 +20,10 @@ from flask import Flask, request, jsonify, send_from_directory, Response
 import anthropic
 
 try:
-    from guard import korumali, kaydet_kullanim, guard_durum
+    from guard import korumali, kaydet_kullanim, guard_durum  # noqa
+    KALKAN = True
 except ImportError:
+    KALKAN = False
     # guard.py repoya yüklenmemiş. Uygulamayı çökertme — ama pahalı uçları da
     # korumasız açma. Site ayakta kalır, okuma uçları kapalı kalır.
     import logging
@@ -643,7 +645,12 @@ def index():
 
 @app.route("/_surum")
 def _surum():
-    return jsonify({"surum": SURUM})
+    """Tek bakışta sağlık kontrolü. Tarayıcıdan aç: /_surum"""
+    return jsonify({
+        "surum": SURUM,
+        "kalkan": KALKAN,
+        "durum": "hazir" if KALKAN else "guard.py EKSIK - okuma uclari kapali",
+    })
 
 
 # ---- PWA: ana ekrana eklenebilirlik ----------------------------------------
