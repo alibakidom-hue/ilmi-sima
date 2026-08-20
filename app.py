@@ -432,10 +432,62 @@ def gemini_json(parts, schema, max_tokens, uc="?", model=None, sicaklik=1.0):
                         message.usage.output_tokens, uc=uc)
     except Exception:
         pass
+    # KRİTİK: token bütçesi dolduysa tool_use girdisi YARIM gelir ve alanların
+    # bir kısmı sessizce boş kalır. Bunu yakalamadan döndürmek, kullanıcıya
+    # boş bölümler göstermek demektir.
+    if message.stop_reason == "max_tokens":
+        raise ValueError("kiraat_yarida_kesildi")
     for block in message.content:
         if block.type == "tool_use" and block.name == "yapilandirilmis_cevap":
             return block.input
     return None
+
+
+OLCUM_ADI = {
+    "yuz_orani":   "Yüz genişliği / yüz uzunluğu",
+    "ust_bolge":   "Üst bölge (alın) payı",
+    "orta_bolge":  "Orta bölge (kaş–burun) payı",
+    "alt_bolge":   "Alt bölge (burun–çene) payı",
+    "elmacik_cene": "Elmacık genişliği / çene genişliği",
+    "cene_acisi":  "Çene açısı (derece)",
+    "goz_arasi":   "Gözler arası mesafe / göz genişliği",
+    "kas_goz":     "Kaş–göz mesafesi / göz yüksekliği",
+    "burun_orani": "Burun genişliği / yüz genişliği",
+    "agiz_burun":  "Ağız genişliği / burun genişliği",
+    "dudak_orani": "Üst dudak kalınlığı / alt dudak kalınlığı",
+    "simetri":     "Simetri endeksi (1.00 = kusursuz)",
+    "kas_farki":   "Kaş yüksekliği farkı (göz yüksekliği birimiyle; + ise sağ kaş yukarıda)",
+}
+
+
+def olcum_metni(olcum):
+    """Tarayıcıda 68 yüz noktasından hesaplanan oranları prompta gömer.
+
+    Neden önemli: bunlar modelin tahmini değil, ölçüm. Aynı fotoğraf her
+    seferinde aynı sayıları verir. Kıraat bu sayılara dayanınca hem tutarlı
+    olur hem de kullanıcının aynada doğrulayabileceği bir zemine oturur.
+    """
+    satir = []
+    for anahtar, deger in olcum.items():
+        ad = OLCUM_ADI.get(anahtar)
+        if ad and isinstance(deger, (int, float)):
+            satir.append(f"- {ad}: {deger}")
+    if not satir:
+        return ""
+    return (
+        "\n\n=== ÖLÇÜLEN DEĞERLER (yüz noktalarından otomatik hesaplandı) ===\n"
+        + "\n".join(satir)
+        + "\n\nBU SAYILAR SENİN TAHMİNİN DEĞİL, ÖLÇÜMDÜR — DOĞRUDUR.\n"
+        "Kıraatini gözle gördüklerinle DEĞİL, öncelikle bu sayılarla kur. "
+        "'gozlem' alanlarında somut ol: hangi oranın ne olduğunu söyle "
+        "(örnek: 'Elmacık/çene oranı 1.28 — üst yüz alt yüzden belirgin geniş'). "
+        "Sayılarla çelişen bir şey yazma. Bir ölçüm listede yoksa o yeri "
+        "fotoğraftan oku, ama emin değilsen 'okunamayan' listesine yaz.\n"
+        "Referans aralıklar: yüz oranı 0.70–0.80 dengeli sayılır; üç bölge "
+        "birbirine yakınsa (her biri ~0.33) mizaç dengeli okunur; simetri 0.97 "
+        "üstü yüksek, 0.93 altı belirgin asimetriktir; çene açısı 120° altı "
+        "keskin, 140° üstü yumuşak çenedir.\n"
+    )
 
 
 def image_part(image_b64, media_type):
@@ -492,8 +544,7 @@ içini ciddiyetle incele.
 Her okuma yerinde önce 'gozlem' alanını doldur. Buraya SADECE gözünle gördüğünü yaz: oran, \
 asimetri, açı, mesafe, kalınlık, yön. Kişi telefonunu aynaya tutup 'evet, gerçekten öyle' \
 diyebilmeli. Karakter yorumu bu alana GİRMEZ. Sonra 'hukum' alanında o gözlemin mizaç \
-karşılığını tek cümlede söyle. 'description' alanına 'gozlem' ile aynı metni yaz.
-
+karşılığını tek cümlede söyle. 
 BARNUM YASAĞI: Herkese uyan cümle kurmak bu uygulamada en ağır kusurdur. Şunlar YASAK: \
 'hem içine dönük hem dışa dönüksün', 'potansiyelin var ama tam kullanmıyorsun', 'zaman zaman \
 kendinden şüphe edersin', 'güçlü bir kişiliğin var'. Her cümle şu testi geçmeli: bu cümle \
@@ -557,10 +608,7 @@ SIMA_TOOL = {
                                            "'Zekisin', 'duygusalsın', 'hem içe hem dışa dönüksün' gibi HERKESE "
                                            "uyan cümleler YASAK — bu kişiye özgü, ayrımı keskin bir şey söyle.",
                         },
-                        "description": {
-                            "type": "string",
-                            "description": "Geriye dönük uyumluluk: gozlem alanının aynısını yaz.",
-                        },
+
                         "gelecek": {
                             "type": "string",
                             "description": "ZORUNLU, TEK cümle, geleceğe dönük eğilim. Kalıp: 'Bu hat seni "
@@ -570,7 +618,7 @@ SIMA_TOOL = {
                         },
                         "intensity": {"type": "integer"},
                     },
-                    "required": ["name", "arabic", "gozlem", "hukum", "description",
+                    "required": ["name", "arabic", "gozlem", "hukum",
                                  "gelecek", "intensity"],
                 },
             },
@@ -629,7 +677,7 @@ SIMA_TOOL = {
 }
 
 
-SURUM = "nur-5"   # arayüz sürümü — dağıtımın gerçekten yenilendiğini doğrulamak için
+SURUM = "nur-6"   # arayüz sürümü — dağıtımın gerçekten yenilendiğini doğrulamak için
 
 
 @app.route("/")
@@ -757,14 +805,22 @@ def analyze():
                       image_part(hand, data.get("mediaTypeHand", "image/jpeg"))]
 
         prompt = SIMA_PROMPT + (MULTI_ANGLE_NOTE if n_angles > 1 else "")
-        result = gemini_json(parts + [prompt], SIMA_TOOL["input_schema"], 2200,
-                             uc="analyze", sicaklik=0.35)
+        olcum = data.get("olcum")
+        if isinstance(olcum, dict) and olcum:
+            prompt += olcum_metni(olcum)
+        result = gemini_json(parts + [prompt], SIMA_TOOL["input_schema"], 3200,
+                             uc="analyze", sicaklik=0.25)
 
         if result is None:
             return jsonify({"error": "Model analiz üretmedi, tekrar dene."}), 502
 
         return jsonify(result)
 
+    except ValueError as e:
+        if "yarida_kesildi" in str(e):
+            return jsonify({"error": "kesildi",
+                            "mesaj": "Üstat kıraatini tamamlayamadı. Tekrar dene."}), 502
+        return jsonify({"error": str(e)}), 500
     except anthropic.APIError as e:
         return jsonify({"error": f"API hatası: {str(e)}"}), 502
     except Exception as e:
@@ -957,7 +1013,7 @@ gibi yargı DEĞİL. Yalnızca istenen JSON yapısında cevap ver."""
             KARMA_TOOL["input_schema"],
             2800,
             uc="karma",
-            sicaklik=0.35,
+            sicaklik=0.25,
         )
 
         if result is None:
