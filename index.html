@@ -229,16 +229,28 @@ body{background:var(--zemin)}
 .acilar{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .yuva{
   position:relative;border:1px dashed var(--cizgi);border-radius:5px;
-  padding:20px 10px;text-align:center;overflow:hidden;min-height:96px;
+  padding:10px;text-align:center;overflow:hidden;aspect-ratio:4/3;
   display:grid;place-items:center
 }
-.yuva.el{grid-column:1/-1;min-height:112px}
+.yuva.el{grid-column:1/-1;aspect-ratio:16/7}
 .yuva.dolu{border-style:solid;border-color:var(--cizgi-guclu)}
 .yuva-ikon{font-size:1.28rem;color:var(--sonuk)}
 .yuva-ad{font-size:.74rem;color:var(--silik);margin-top:6px}
 .yuva img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none}
 .yuva.dolu img{display:block}
-.yuva.dolu .yuva-ic{position:relative;z-index:2;background:rgba(10,9,8,.72);padding:5px 11px;border-radius:3px}
+.yuva.dolu .yuva-ic{display:none}
+.yuva-rozet{display:none}
+.yuva.dolu .yuva-rozet{
+  display:grid;place-items:center;position:absolute;top:7px;right:7px;z-index:3;
+  width:22px;height:22px;border-radius:50%;background:rgba(10,9,8,.82);
+  border:1px solid var(--cizgi-guclu);color:var(--altin);font-size:.66rem
+}
+.yuva-serit{display:none}
+.yuva.dolu .yuva-serit{
+  display:block;position:absolute;left:0;right:0;bottom:0;z-index:3;
+  padding:16px 10px 7px;text-align:left;font-size:.68rem;letter-spacing:.05em;
+  color:var(--metin);background:linear-gradient(transparent,rgba(10,9,8,.92))
+}
 
 /* ---------- yükleniyor ---------- */
 .asama{padding:52px 0;text-align:center}
@@ -468,9 +480,9 @@ input:focus{outline:none;border-color:var(--cizgi-guclu)}
         </button>
         <div class="ek-govde" id="ekGovde">
           <div class="acilar">
-            <button class="yuva" id="yuvaR"><img id="gorR" alt=""><span class="yuva-ic"><span class="yuva-ikon">◐</span><span class="yuva-ad">Sağ profil</span></span></button>
-            <button class="yuva" id="yuvaL"><img id="gorL" alt=""><span class="yuva-ic"><span class="yuva-ikon">◑</span><span class="yuva-ad">Sol profil</span></span></button>
-            <button class="yuva el" id="yuvaH"><img id="gorH" alt=""><span class="yuva-ic"><span class="yuva-ikon">✋</span><span class="yuva-ad">Avuç içi — kalp, akıl, hayat çizgisi</span></span></button>
+            <button class="yuva" id="yuvaR"><img id="gorR" alt=""><span class="yuva-ic"><span class="yuva-ikon">◐</span><span class="yuva-ad">Sağ profil</span></span><span class="yuva-rozet">✓</span><span class="yuva-serit">Sağ profil</span></button>
+            <button class="yuva" id="yuvaL"><img id="gorL" alt=""><span class="yuva-ic"><span class="yuva-ikon">◑</span><span class="yuva-ad">Sol profil</span></span><span class="yuva-rozet">✓</span><span class="yuva-serit">Sol profil</span></button>
+            <button class="yuva el" id="yuvaH"><img id="gorH" alt=""><span class="yuva-ic"><span class="yuva-ikon">◒</span><span class="yuva-ad">Avuç içi — kalp, akıl, hayat çizgisi</span></span><span class="yuva-rozet">✓</span><span class="yuva-serit">Avuç içi</span></button>
           </div>
           <input type="file" id="dosyaR" accept="image/*" hidden>
           <input type="file" id="dosyaL" accept="image/*" hidden>
@@ -1915,4 +1927,3 @@ if ('serviceWorker' in navigator) {
 </script>
 </body>
 </html>
-
