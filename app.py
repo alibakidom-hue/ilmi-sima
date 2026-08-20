@@ -61,6 +61,8 @@ except Exception:
 # kök adresten servis eder — app.py, guard.py, hatta .env dahil. Servis edilecek
 # her dosyanın açık bir rotası olmalı.
 app = Flask(__name__, static_folder=None)
+# Aşırı büyük istek gövdesi ücretsiz plandaki işçiyi düşürebiliyor.
+app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024  # 20 MB
 
 # ---- Doğum haritası yardımcıları ----
 ZODIAC_TR = ["Koç", "Boğa", "İkizler", "Yengeç", "Aslan", "Başak",
@@ -677,7 +679,21 @@ SIMA_TOOL = {
 }
 
 
-SURUM = "nur-6"   # arayüz sürümü — dağıtımın gerçekten yenilendiğini doğrulamak için
+@app.errorhandler(Exception)
+def _hata_json(e):
+    """Flask varsayılan olarak HTML hata sayfası döner; istemci onu ayrıştıramaz
+    ve kullanıcı 'beklenmeyen cevap' görür. Her hatayı JSON'a çeviriyoruz."""
+    from werkzeug.exceptions import HTTPException
+    kod = e.code if isinstance(e, HTTPException) else 500
+    mesaj = {
+        413: "Gönderdiğin görseller çok büyük. Daha küçük bir fotoğraf dene.",
+        404: "Böyle bir sayfa yok.",
+        429: "Çok sık istek geldi. Biraz bekle.",
+    }.get(kod, "Üstat şu an cevap veremedi. Birazdan tekrar dene.")
+    return jsonify({"error": "sunucu", "mesaj": mesaj}), kod
+
+
+SURUM = "nur-8"   # arayüz sürümü — dağıtımın gerçekten yenilendiğini doğrulamak için
 
 
 @app.route("/")
@@ -1304,6 +1320,98 @@ ELEVEN_API_KEY = os.environ.get("ELEVENLABS_API_KEY")
 ELEVEN_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "pNInz6obpgDQGcFmaJgB")
 
 
+SOR_TOOL = {
+    "name": "ustat_cevabi",
+    "description": "Üstadın cevabı.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "cevap": {
+                "type": "string",
+                "description": "Üstadın cevabı. 2-4 cümle, en fazla 70 kelime. Klasik ama "
+                               "anlaşılır Türkçe; ağdalı olmadan vakur. Kişiye 'sen' diye hitap et. "
+                               "ELİNDEKİ KIRAATE DAYAN — sorulan şeyi onun sîmâsıyla ilişkilendir. "
+                               "Kıraatte olmayan bir şey uydurma; bilmiyorsan bilmediğini söyle.",
+            },
+            "dokunus": {
+                "type": "string",
+                "description": "İsteğe bağlı tek cümlelik kapanış — bir soru ya da düşündürücü bir "
+                               "not. Yoksa boş bırak.",
+            },
+        },
+        "required": ["cevap"],
+    },
+}
+
+SOR_PROMPT = """Sen İlm-i Sîmâ'nın üstadısın. Karşındaki kişinin yüzünü zaten okudun; \
+kıraatin aşağıda. Şimdi sana bir soru soruyor.
+
+ÜSLUP: Vakur, sakin, az konuşan bir üstat. Klasik ama anlaşılır Türkçe — ağdalı değil. \
+Asla "yapay zekâyım", "model", "sistem" gibi sözler kullanma. Fal bakan bir şovmen de \
+değilsin; ölçen, tartan, gerektiğinde susan bir kişisin.
+
+SINIRLAR — bunlar sarsılmaz:
+- Elindeki kıraatte olmayan bir şeyi uydurma. Bilmiyorsan "sîmân bunu söylemiyor" de.
+- Tıbbi, hukuki ya da mali tavsiye verme. Sorulursa kişiyi ehline yönlendir.
+- Ölüm, hastalık, felaket kehanetinde bulunma. Sorulursa reddet: sîmâ meyli gösterir, akıbeti değil.
+- Kimsenin yerine karar verme. Yol gösterirsin, emir vermezsin.
+- Kısa konuş. En fazla 70 kelime.
+
+Soru sîmâyla hiç ilgisiz bir şeyse (hava durumu, kod yazma, ödev) nazikçe reddet ve \
+"ben yalnızca sîmâdan okuduğumu söylerim" de."""
+
+
+@app.route("/sor", methods=["POST"])
+@korumali("sor", agir=False)
+def sor():
+    """Üstatla serbest sohbet. Kıraat bağlamına sıkı sıkıya bağlı."""
+    try:
+        data = request.get_json() or {}
+        soru = (data.get("soru") or "").strip()
+        if not soru:
+            return jsonify({"error": "bos", "mesaj": "Bir şey sormadın."}), 400
+        if len(soru) > 400:
+            soru = soru[:400]
+
+        baglam = (data.get("baglam") or "").strip()[:2500]
+        gecmis = data.get("gecmis") or []
+
+        parcalar = [SOR_PROMPT]
+        if baglam:
+            parcalar.append("=== BU KİŞİNİN KIRAATİ ===\n" + baglam)
+        else:
+            parcalar.append("=== UYARI ===\nBu kişinin sîmâsını henüz okumadın. "
+                            "Önce sîmâsına bakman gerektiğini nazikçe söyle.")
+
+        # Son birkaç tur — sohbetin akışı kopmasın
+        if isinstance(gecmis, list) and gecmis:
+            satir = []
+            for t in gecmis[-6:]:
+                if not isinstance(t, dict):
+                    continue
+                kim = "Soru" if t.get("kim") == "kul" else "Üstat"
+                satir.append(f"{kim}: {str(t.get('metin', ''))[:300]}")
+            if satir:
+                parcalar.append("=== ÖNCEKİ KONUŞMA ===\n" + "\n".join(satir))
+
+        parcalar.append("=== ŞİMDİKİ SORU ===\n" + soru)
+
+        sonuc = gemini_json(parcalar, SOR_TOOL["input_schema"], 400,
+                            uc="sor", model=MODEL_UCUZ, sicaklik=0.7)
+        if not sonuc:
+            return jsonify({"error": "bos", "mesaj": "Üstat cevap vermedi, tekrar sor."}), 502
+        return jsonify(sonuc)
+
+    except ValueError as e:
+        if "yarida_kesildi" in str(e):
+            return jsonify({"error": "kesildi", "mesaj": "Üstat sözünü tamamlayamadı. Tekrar sor."}), 502
+        return jsonify({"error": str(e)}), 500
+    except anthropic.APIError as e:
+        return jsonify({"error": "api", "mesaj": f"Bağlantı hatası: {str(e)[:120]}"}), 502
+    except Exception as e:
+        return jsonify({"error": "genel", "mesaj": f"Beklenmeyen hata: {str(e)[:120]}"}), 500
+
+
 @app.route("/ses", methods=["POST"])
 @korumali("ses", agir=False)
 def ses():
@@ -1314,16 +1422,22 @@ def ses():
         text = (data.get("text") or "").strip()
         if not text:
             return jsonify({"error": "Metin boş."}), 400
-        text = text[:600]  # ücretsiz kotayı korumak için makul bir üst sınır
+        text = text[:700]  # kotayı korumak için makul bir üst sınır
 
         url = f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVEN_VOICE_ID}"
         body = json.dumps({
             "text": text,
             "model_id": "eleven_multilingual_v2",
+            # Kalın ve tok bir üstat sesi için:
+            #  stability yüksek  -> titremeyen, sakin, vakur okuma
+            #  style düşük       -> abartısız, tiyatral olmayan
+            #  speaker_boost     -> gövdeyi ve alt frekansları öne çıkarır
+            #  speed < 1         -> ağır, ölçülü konuşma
             "voice_settings": {
-                "stability": 0.55,
-                "similarity_boost": 0.8,
-                "style": 0.35,
+                "stability": float(os.environ.get("SES_STABILITY", "0.72")),
+                "similarity_boost": float(os.environ.get("SES_BENZERLIK", "0.85")),
+                "style": float(os.environ.get("SES_STIL", "0.15")),
+                "speed": float(os.environ.get("SES_HIZ", "0.92")),
                 "use_speaker_boost": True,
             },
         }).encode("utf-8")
