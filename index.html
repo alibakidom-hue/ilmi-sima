@@ -106,7 +106,7 @@ body{background:var(--zemin)}
 @keyframes gir{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 
 .sekmeler{
-  flex:0 0 auto;display:grid;grid-template-columns:repeat(4,1fr);
+  flex:0 0 auto;display:grid;grid-template-columns:repeat(5,1fr);
   border-top:1px solid var(--cizgi);background:var(--kat1);
   padding-bottom:var(--alt);z-index:20;
 }
@@ -115,7 +115,7 @@ body{background:var(--zemin)}
   color:var(--silik);transition:color .2s;position:relative
 }
 .sekme-ikon{font-size:1.12rem;line-height:1}
-.sekme-ad{font-size:.62rem;letter-spacing:.11em;text-transform:uppercase}
+.sekme-ad{font-size:.55rem;letter-spacing:.07em;text-transform:uppercase}
 .sekme.aktif{color:var(--altin)}
 .sekme.aktif::before{
   content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);
@@ -321,6 +321,81 @@ body{background:var(--zemin)}
 }
 .ac-govde{display:none;margin-top:20px}
 .ac-govde.acik{display:block}
+
+/* ---------- divan: üstadın gezindiği alan ---------- */
+.divan{
+  position:relative;height:38vh;min-height:230px;max-height:340px;
+  margin:0 -20px 4px;overflow:hidden
+}
+#divanTuval{position:absolute;inset:0;width:100%;height:100%}
+.divan::after{
+  content:'';position:absolute;left:0;right:0;bottom:0;height:70px;
+  background:linear-gradient(transparent,var(--zemin));pointer-events:none
+}
+.divan-hal{
+  position:absolute;left:0;right:0;bottom:10px;text-align:center;
+  font-size:.6rem;letter-spacing:.26em;text-transform:uppercase;
+  color:var(--sonuk);transition:opacity .4s;z-index:2
+}
+
+/* ---------- sohbet ---------- */
+.sohbet{padding:6px 0 4px;min-height:120px}
+.balon{margin-bottom:16px;animation:balonGir .45s cubic-bezier(.2,.7,.3,1)}
+@keyframes balonGir{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.balon.kul{text-align:right}
+.balon.kul span{
+  display:inline-block;max-width:82%;text-align:left;
+  padding:11px 15px;border:1px solid var(--cizgi);border-radius:12px 12px 3px 12px;
+  background:var(--kat2);font-size:.93rem;line-height:1.6;color:var(--metin)
+}
+.balon.ustat .kim{
+  font-size:.58rem;letter-spacing:.24em;text-transform:uppercase;
+  color:var(--sonuk);margin-bottom:7px
+}
+.balon.ustat .soz{
+  font-family:var(--serif);font-size:1.06rem;line-height:1.72;color:var(--metin)
+}
+.balon.ustat .dokunus{
+  margin-top:10px;padding-top:9px;border-top:1px solid var(--cizgi);
+  font-family:var(--serif);font-style:italic;font-size:.95rem;color:var(--altin);opacity:.9
+}
+.balon.ustat .arac{display:flex;gap:14px;margin-top:11px}
+.balon.ustat .arac button{
+  font-size:.7rem;letter-spacing:.12em;color:var(--sonuk);text-transform:uppercase
+}
+.balon.ustat .arac button:active{color:var(--altin)}
+.dusunuyor{display:flex;gap:6px;align-items:center;padding:6px 0 14px}
+.dusunuyor i{
+  width:5px;height:5px;border-radius:50%;background:var(--sonuk);
+  font-style:normal;animation:nabiz 1.3s ease-in-out infinite
+}
+.dusunuyor i:nth-child(2){animation-delay:.18s}
+.dusunuyor i:nth-child(3){animation-delay:.36s}
+@keyframes nabiz{0%,100%{opacity:.25;transform:translateY(0)}50%{opacity:1;transform:translateY(-3px)}}
+
+.soru-cubuk{
+  position:sticky;bottom:0;background:var(--zemin);padding:10px 0 4px;
+  display:flex;gap:9px;align-items:flex-end;border-top:1px solid var(--cizgi)
+}
+.soru-cubuk textarea{
+  flex:1;resize:none;min-height:46px;max-height:120px;padding:13px 14px;
+  background:var(--kat2);border:1px solid var(--cizgi);border-radius:10px;
+  color:var(--metin);font-size:.95rem;font-family:inherit;line-height:1.5
+}
+.soru-cubuk textarea:focus{outline:none;border-color:var(--cizgi-guclu)}
+.soru-cubuk textarea::placeholder{color:var(--silik)}
+.gonder{
+  width:46px;height:46px;flex:0 0 auto;border-radius:10px;
+  background:linear-gradient(180deg,#D7B85B,#A98829);color:#14110A;
+  font-size:1rem;display:grid;place-items:center;transition:opacity .2s
+}
+.gonder[disabled]{opacity:.35}
+.oneri{display:flex;gap:8px;overflow-x:auto;padding:2px 0 14px;scrollbar-width:none}
+.oneri button{
+  flex:0 0 auto;padding:8px 14px;border:1px solid var(--cizgi);border-radius:16px;
+  font-size:.79rem;color:var(--ikincil);white-space:nowrap
+}
+.oneri button:active{border-color:var(--cizgi-guclu);color:var(--altin)}
 
 /* ---------- günlük ---------- */
 .gun-kart{
@@ -578,6 +653,32 @@ input:focus{outline:none;border-color:var(--cizgi-guclu)}
       <div class="hata" id="hataSima"></div>
     </section>
 
+    <!-- ================= ÜSTAT ================= -->
+    <section class="ekran" id="ekUstat">
+      <div class="divan">
+        <canvas id="divanTuval" aria-label="Üstat"></canvas>
+        <div class="divan-hal" id="divanHal">Divan kuruldu</div>
+      </div>
+
+      <div id="ustatBos" hidden>
+        <div class="bos-durum" style="padding:24px 10px 40px">
+          <div class="bd-ad">Üstat henüz sîmânı görmedi</div>
+          <div class="ipucu">Önce yüzünü okut; sonra ne sorarsan sor, cevabı sîmândan verir.</div>
+          <button class="dugme d-ince" id="ustatSimaBtn" style="margin-top:20px;max-width:260px;margin-inline:auto">Sîmâna bak</button>
+        </div>
+      </div>
+
+      <div id="ustatSohbet" hidden>
+        <div class="sohbet" id="sohbet"></div>
+        <div class="oneri" id="oneriler"></div>
+        <div class="soru-cubuk">
+          <textarea id="soruGiris" rows="1" placeholder="Üstada sor…" maxlength="400"></textarea>
+          <button class="gonder" id="soruBtn" disabled aria-label="Gönder">◆</button>
+        </div>
+      </div>
+      <div class="hata" id="hataUstat"></div>
+    </section>
+
     <!-- ================= GÜNLÜK ================= -->
     <section class="ekran" id="ekGunluk">
       <div id="gunKurulum" hidden>
@@ -654,6 +755,7 @@ input:focus{outline:none;border-color:var(--cizgi-guclu)}
 
   <nav class="sekmeler">
     <button class="sekme aktif" data-ekran="ekSima"><span class="sekme-ikon">◉</span><span class="sekme-ad">Sîmâ</span></button>
+    <button class="sekme" data-ekran="ekUstat"><span class="sekme-ikon">۞</span><span class="sekme-ad">Üstat</span></button>
     <button class="sekme" data-ekran="ekGunluk"><span class="sekme-ikon">☽</span><span class="sekme-ad">Günlük</span><span class="rozet" id="gunRozet"></span></button>
     <button class="sekme" data-ekran="ekEslesme"><span class="sekme-ikon">⚯</span><span class="sekme-ad">Eşleşme</span></button>
     <button class="sekme" data-ekran="ekArsiv"><span class="sekme-ikon">▤</span><span class="sekme-ad">Arşiv</span></button>
@@ -982,13 +1084,38 @@ class NurYuz {
    İLM-İ SÎMÂ — uygulama katmanı
    ========================================================= */
 
-const SURUM = 'nur-6';
+const SURUM = 'nur-8';
 
 /* ---- ortam sorgusu: her tarayıcıda matchMedia yok ---- */
 function medya(q) {
   try { return (window.matchMedia && window.matchMedia(q)) || { matches: false }; }
   catch (e) { return { matches: false }; }
 }
+
+/* ---- durum değişkenleri ----
+   Bunlar en üstte durmak ZORUNDA: aşağıdaki bloklar (karşılama, sekme geçişi)
+   bu değişkenlere kendilerinden önce erişebiliyor. Aşağıda tanımlanırlarsa
+   "Cannot access before initialization" hatası betiğin tamamını durdurur. */
+var USTAT_SOZ = [
+  'Sîmâ, insanın kendine bile söylemediğini söyler.',
+  'Bir yüzü okumak, onu yargılamak değildir.',
+  'Hatlar geçmişi anlatmaz — meyli gösterir.',
+  'Aceleyle bakan, yüzü değil gölgesini görür.',
+  'Her çizgi bir alışkanlığın izidir.'
+];
+var ONERILER = [
+  'Bu sîmâ aşkta ne söylüyor?',
+  'İşimde neye dikkat etmeliyim?',
+  'En zayıf yanım ne?',
+  'Bu yıl beni ne bekliyor?',
+  'İnsanlar beni nasıl görüyor?',
+  'Neyi bırakmam gerek?'
+];
+var ustatYuz = null;
+var divanYuz = null;
+var sohbetGecmis = [];
+var sorUcuyor = false;
+var sesCalan = null;
 
 /* ---- dokunsal geri bildirim ---- */
 function titre(desen) {
@@ -1167,11 +1294,32 @@ async function cagir(yol, govde, saniye) {
   let d;
   try { d = JSON.parse(ham); }
   catch (e) {
-    if (r.status === 502 || r.status === 504) throw new Error('Üstat vaktinde cevap veremedi. Birkaç saniye sonra tekrar dene.');
-    throw new Error('Sunucudan beklenmeyen cevap geldi (' + r.status + ').');
+    // Cevap JSON değilse hata sunucudan değil, altyapıdan geliyor
+    // (Render uyanıyor, işçi yeniden başlıyor, ağ kesildi...).
+    const e2 = new Error(
+      r.status === 503 ? 'Sunucu şu an ayağa kalkıyor. Birkaç saniye sonra tekrar dene.'
+      : (r.status === 502 || r.status === 504) ? 'Üstat vaktinde cevap veremedi. Tekrar dene.'
+      : 'Sunucuya ulaşıldı ama cevabı okunamadı (' + r.status + ').');
+    e2.tekrarla = (r.status === 502 || r.status === 503 || r.status === 504);
+    throw e2;
   }
   if (d.error) throw new Error(d.mesaj || d.error);
   return d;
+}
+
+/* Altyapı kaynaklı geçici hatalarda bir kez otomatik tekrar dene.
+   Ücretsiz planda sunucu uyanırken ilk istek sık sık boşa gidiyor;
+   kullanıcıyı butona ikinci kez bastırmak yerine kendimiz deniyoruz. */
+async function cagirTekrarli(yol, govde, bilgi) {
+  try {
+    return await cagir(yol, govde);
+  } catch (e) {
+    if (!e.tekrarla) throw e;
+    if (bilgi) bilgi('Sunucu uyanıyor, tekrar deneniyor…');
+    uyandir();
+    await new Promise(r => setTimeout(r, 6000));
+    return await cagir(yol, govde);
+  }
 }
 
 /* ---- sunucuyu uyandir ----
@@ -1217,7 +1365,7 @@ function hata(kutuId, metin) {
   const k = $(kutuId);
   k.textContent = metin;
   k.classList.add('gor');
-  k.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  try { k.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
 }
 function hataTemiz(kutuId) { $(kutuId).classList.remove('gor'); }
 
@@ -1231,6 +1379,7 @@ function sekmeAc(id) {
   $('govde').scrollTop = 0;
   Ses.tik();
   titre(6);
+  if (id === 'ekUstat') divanAc();
   if (id === 'ekGunluk') gunlukAc();
   if (id === 'ekArsiv') arsivCiz();
 }
@@ -1505,11 +1654,13 @@ $('okuBtn').addEventListener('click', async () => {
   asamaBaslat();
   sayacBaslat();
   try {
-    const d = await cagir('/analyze', yukGovde());
+    const d = await cagirTekrarli('/analyze', yukGovde(), m => { $('asamaSure').textContent = m; });
     asamaDurdur();
     sonSonuc = d;
     sonucCiz(d);
     arsiveEkle(d);
+    sohbetGecmis = [];
+    if ($('sohbet')) $('sohbet').innerHTML = '';
     Ses.acilis();
     titre([14, 60, 14, 60, 40]);
     simaDurum('simaSonuc');
@@ -1612,12 +1763,12 @@ $('karmaOkuBtn').addEventListener('click', async () => {
   try {
     // Karma'nin agirligi haritada; sunucu yalnizca on yuzu okuyor.
     // Profilleri ve avuci gondermek bosuna yukleme suresi demek.
-    const d = await cagir('/karma', {
+    const d = await cagirTekrarli('/karma', {
       image: anaGor.b64, mediaType: 'image/jpeg',
       olcum: sonOlcum || undefined,
       birth: { year: y, month: a, day: g, hour: saat, city: $('kSehir').value.trim() },
       name: $('kAd').value.trim()
-    });
+    }, () => { $('karmaOkuBtn').textContent = 'Sunucu uyanıyor, tekrar deneniyor…'; });
     karmaCiz(d);
     Ses.acilis();
   } catch (err) { hata('hataSima', err.message); }
@@ -1943,14 +2094,6 @@ function arsivCiz() {
 })();
 
 /* ================= SAYFA İÇİ ÜSTAT ================= */
-const USTAT_SOZ = [
-  'Sîmâ, insanın kendine bile söylemediğini söyler.',
-  'Bir yüzü okumak, onu yargılamak değildir.',
-  'Hatlar geçmişi anlatmaz — meyli gösterir.',
-  'Aceleyle bakan, yüzü değil gölgesini görür.',
-  'Her çizgi bir alışkanlığın izidir.'
-];
-let ustatYuz = null;
 function ustatBaslat() {
   if (ustatYuz) return;
   ustatYuz = new NurYuz($('ustatTuval'), { olcek: 1.0, gez: .28 });
@@ -2015,6 +2158,247 @@ if ('serviceWorker' in navigator) {
     D.yaz('sima_kur_kapali', true);
   });
 })();
+
+/* =========================================================
+   DİVAN — üstadın gezindiği alan ve sohbet
+   ========================================================= */
+
+
+function kiraatOzeti() {
+  const a = D.al(A_ARSIV, []);
+  if (!sonSonuc && !a.length) return '';
+  const d = sonSonuc || a[0].veri;
+  if (!d) return '';
+  const s = [];
+  if (d.hukum_cumlesi) s.push('Hüküm: ' + d.hukum_cumlesi);
+  if (d.dominantTraitTR) s.push('Baskın mizaç: ' + d.dominantTraitTR);
+  (d.traits || []).forEach(t => {
+    s.push(`${t.name}: ${t.gozlem || ''} — ${t.hukum || ''}${t.gelecek ? ' (' + t.gelecek + ')' : ''}`);
+  });
+  if (d.el && d.el.el_tipi) {
+    s.push('El tipi: ' + d.el.el_tipi);
+    (d.el.cizgiler || []).forEach(c => s.push(`${c.ad}: ${c.yorum || ''}`));
+  }
+  if ((d.okunamayan || []).length) s.push('Okunamayanlar: ' + d.okunamayan.join('; '));
+  if (d.overall) s.push('Genel kıraat: ' + d.overall);
+  const b = D.al(A_DOGUM, null);
+  if (b) s.push(`Doğum: ${b.day}.${b.month}.${b.year}${b.name ? ' — ' + b.name : ''}`);
+  return s.join('\n');
+}
+
+function divanAc() {
+  const varMi = !!(sonSonuc || D.al(A_ARSIV, []).length);
+  gorunur($('ustatBos'), !varMi);
+  gorunur($('ustatSohbet'), varMi);
+
+  if (!divanYuz) {
+    // gez yüksek: üstat alanın içinde geniş bir yay çizerek dolaşır
+    divanYuz = new NurYuz($('divanTuval'), { olcek: 1.0, gez: 0.9, tamEkran: true });
+    setInterval(() => { if (!divanYuz.konusuyor && Math.random() < 0.5) divanYuz.kirp(); }, 3200);
+    const izle = (x, y) => {
+      const r = $('divanTuval').getBoundingClientRect();
+      if (!r.width) return;
+      divanYuz.bakisAyarla(
+        Math.max(-1, Math.min(1, (x - (r.left + r.width / 2)) / (r.width / 2))),
+        Math.max(-1, Math.min(1, (y - (r.top + r.height / 2)) / (r.height / 1.2))));
+    };
+    addEventListener('mousemove', e => izle(e.clientX, e.clientY));
+    addEventListener('touchmove', e => { const t = e.touches[0]; if (t) izle(t.clientX, t.clientY); }, { passive: true });
+    $('divanTuval').addEventListener('click', () => { divanYuz.kirp(); Ses.tik(); });
+  }
+  setTimeout(() => divanYuz && divanYuz._boyut(), 60);
+
+  if (varMi && !sohbetGecmis.length) {
+    ustatBalon('Sîmânı okudum. Merak ettiğini sor — cevabını yüzünden veririm.', '', false);
+    onerileriCiz();
+  }
+}
+$('ustatSimaBtn').addEventListener('click', () => sekmeAc('ekSima'));
+
+function divanHal(metin) {
+  const e = $('divanHal');
+  e.style.opacity = 0;
+  setTimeout(() => { e.textContent = metin; e.style.opacity = 1; }, 260);
+}
+
+function onerileriCiz() {
+  const kap = $('oneriler');
+  const secim = ONERILER.slice().sort(() => Math.random() - 0.5).slice(0, 4);
+  kap.innerHTML = secim.map(s => `<button>${s}</button>`).join('');
+  kap.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    $('soruGiris').value = b.textContent;
+    $('soruBtn').disabled = false;
+    soruGonder();
+  }));
+}
+
+function kulBalon(metin) {
+  const d = document.createElement('div');
+  d.className = 'balon kul';
+  d.innerHTML = `<span></span>`;
+  d.querySelector('span').textContent = metin;
+  $('sohbet').appendChild(d);
+  kaydir();
+}
+
+function ustatBalon(metin, dokunus, seslendir) {
+  const d = document.createElement('div');
+  d.className = 'balon ustat';
+  d.innerHTML = `<div class="kim">Üstat</div><div class="soz"></div>` +
+    (dokunus ? `<div class="dokunus"></div>` : '') +
+    `<div class="arac"><button class="dinle">♪ Dinle</button></div>`;
+  d.querySelector('.soz').textContent = metin;
+  if (dokunus) d.querySelector('.dokunus').textContent = dokunus;
+  d.querySelector('.dinle').addEventListener('click', () => seslendirMetin(metin + ' ' + (dokunus || '')));
+  $('sohbet').appendChild(d);
+  kaydir();
+  if (seslendir !== false) seslendirMetin(metin + ' ' + (dokunus || ''));
+}
+
+function kaydir() {
+  requestAnimationFrame(() => {
+    const g = $('govde');
+    try { g.scrollTo({ top: g.scrollHeight, behavior: 'smooth' }); }
+    catch (e) { g.scrollTop = g.scrollHeight; }
+  });
+}
+
+$('soruGiris').addEventListener('input', function () {
+  this.style.height = 'auto';
+  this.style.height = Math.min(120, this.scrollHeight) + 'px';
+  $('soruBtn').disabled = !this.value.trim() || sorUcuyor;
+});
+$('soruGiris').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); soruGonder(); }
+});
+$('soruBtn').addEventListener('click', soruGonder);
+
+async function soruGonder() {
+  const g = $('soruGiris');
+  const soru = g.value.trim();
+  if (!soru || sorUcuyor) return;
+  sorUcuyor = true;
+  $('soruBtn').disabled = true;
+  g.value = ''; g.style.height = 'auto';
+  hataTemiz('hataUstat');
+  $('oneriler').innerHTML = '';
+
+  kulBalon(soru);
+  sohbetGecmis.push({ kim: 'kul', metin: soru });
+  titre(8);
+
+  const bekle = document.createElement('div');
+  bekle.className = 'dusunuyor';
+  bekle.innerHTML = '<i></i><i></i><i></i>';
+  $('sohbet').appendChild(bekle);
+  kaydir();
+  divanHal('Üstat düşünüyor');
+
+  try {
+    const d = await cagirTekrarli('/sor', {
+      soru, baglam: kiraatOzeti(), gecmis: sohbetGecmis.slice(-6)
+    });
+    bekle.remove();
+    ustatBalon(d.cevap || '', d.dokunus || '');
+    sohbetGecmis.push({ kim: 'ustat', metin: (d.cevap || '') + ' ' + (d.dokunus || '') });
+    if (sohbetGecmis.length % 6 === 0) onerileriCiz();
+  } catch (err) {
+    bekle.remove();
+    divanHal('Divan kuruldu');
+    hata('hataUstat', err.message);
+  } finally {
+    sorUcuyor = false;
+    $('soruBtn').disabled = !$('soruGiris').value.trim();
+  }
+}
+
+/* ---------------------------------------------------------
+   SES — üstadın sesi, ağzı sesin genliğiyle kıpırdar
+   --------------------------------------------------------- */
+let sesCtx = null, cozumleyici = null, sesKaynak = null;
+
+function agizSurucu(yuz) {
+  if (!cozumleyici) return;
+  const veri = new Uint8Array(cozumleyici.fftSize);
+  const tik = () => {
+    if (!sesCalan || sesCalan.paused || sesCalan.ended) {
+      if (yuz) { yuz.agiz = 0; yuz.konusuyor = false; }
+      divanHal('Divan kuruldu');
+      return;
+    }
+    cozumleyici.getByteTimeDomainData(veri);
+    let t = 0;
+    for (let i = 0; i < veri.length; i++) { const v = (veri[i] - 128) / 128; t += v * v; }
+    const guc = Math.sqrt(t / veri.length);
+    if (yuz) yuz.agiz = Math.min(1, guc * 5.5);
+    requestAnimationFrame(tik);
+  };
+  tik();
+}
+
+async function seslendirMetin(metin) {
+  metin = (metin || '').trim();
+  if (!metin) return;
+  if (sesCalan) { try { sesCalan.pause(); } catch (e) {} sesCalan = null; }
+  const yuz = divanYuz;
+  if (yuz) yuz.konusuyor = true;
+  divanHal('Üstat söylüyor');
+
+  try {
+    const r = await fetch('/ses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Sima-Cihaz': CIHAZ },
+      body: JSON.stringify({ text: metin })
+    });
+    if (!r.ok) throw new Error('ses yok');
+    const blob = await r.blob();
+    const ses = new Audio(URL.createObjectURL(blob));
+    ses.crossOrigin = 'anonymous';
+    sesCalan = ses;
+    try {
+      if (!sesCtx) sesCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (sesCtx.state === 'suspended') await sesCtx.resume();
+      cozumleyici = sesCtx.createAnalyser();
+      cozumleyici.fftSize = 512;
+      sesKaynak = sesCtx.createMediaElementSource(ses);
+      sesKaynak.connect(cozumleyici);
+      cozumleyici.connect(sesCtx.destination);
+    } catch (e) { cozumleyici = null; }
+    ses.onended = () => { if (yuz) { yuz.agiz = 0; yuz.konusuyor = false; } divanHal('Divan kuruldu'); };
+    await ses.play();
+    if (cozumleyici) agizSurucu(yuz); else sahteAgiz(yuz, ses);
+  } catch (e) {
+    // ElevenLabs yoksa tarayıcı sesine düş — pesleştirip yavaşlatıyoruz
+    tarayiciSesi(metin, yuz);
+  }
+}
+
+function sahteAgiz(yuz, ses) {
+  const tik = () => {
+    if (!ses || ses.paused || ses.ended) { if (yuz) { yuz.agiz = 0; yuz.konusuyor = false; } return; }
+    if (yuz) yuz.agiz = 0.25 + Math.random() * 0.6;
+    setTimeout(tik, 110);
+  };
+  tik();
+}
+
+function tarayiciSesi(metin, yuz) {
+  if (!window.speechSynthesis) { if (yuz) yuz.konusuyor = false; divanHal('Divan kuruldu'); return; }
+  const s = new SpeechSynthesisUtterance(metin);
+  const sesler = speechSynthesis.getVoices();
+  const tr = sesler.filter(v => /tr[-_]TR|Turkish|Türk/i.test(v.lang + ' ' + v.name));
+  // Erkek sesi varsa onu seç
+  s.voice = tr.find(v => /erkek|male|ahmet|emre|yavuz/i.test(v.name)) || tr[0] || null;
+  s.lang = 'tr-TR';
+  s.pitch = 0.62;   // pesleştir
+  s.rate = 0.9;     // ağırlaştır
+  s.volume = 1;
+  s.onend = () => { if (yuz) { yuz.agiz = 0; yuz.konusuyor = false; } divanHal('Divan kuruldu'); };
+  speechSynthesis.cancel();
+  speechSynthesis.speak(s);
+  sahteAgiz(yuz, { get paused() { return !speechSynthesis.speaking; }, ended: false });
+}
+if (window.speechSynthesis) speechSynthesis.getVoices();
 
 /* ---- açılışta durum ---- */
 (function baslangic() {
