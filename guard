@@ -252,4 +252,3 @@ def guard_durum():
 # 5) Frontend'de 429/503 dönüşünde error kutusuna `mesaj` alanını bas,
 #    ham HTTP hatası gösterme.
 
-
