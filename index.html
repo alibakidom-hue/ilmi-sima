@@ -981,7 +981,7 @@ class NurYuz {
    İLM-İ SÎMÂ — uygulama katmanı
    ========================================================= */
 
-const SURUM = 'nur-3';
+const SURUM = 'nur-4';
 
 /* ---- ortam sorgusu: her tarayıcıda matchMedia yok ---- */
 function medya(q) {
@@ -1144,12 +1144,24 @@ const CIHAZ = (function () {
   return c;
 })();
 
-async function cagir(yol, govde) {
-  const r = await fetch(yol, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Sima-Cihaz': CIHAZ },
-    body: JSON.stringify(govde)
-  });
+async function cagir(yol, govde, saniye) {
+  // Ucretsiz sunucu uykudan uyanirken 50 sn kaybedebiliyor; pay birakiyoruz.
+  const kes = new AbortController();
+  const zaman = setTimeout(() => kes.abort(), (saniye || 150) * 1000);
+  let r;
+  try {
+    r = await fetch(yol, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Sima-Cihaz': CIHAZ },
+      body: JSON.stringify(govde),
+      signal: kes.signal
+    });
+  } catch (e) {
+    // Safari bunu 'Load failed' diye gosteriyor — kullaniciya bir sey anlatmiyor.
+    if (e.name === 'AbortError')
+      throw new Error('Üstat çok uzun sustu. Bağlantın zayıf olabilir; tekrar dene.');
+    throw new Error('Sunucuya ulaşılamadı. Bağlantını kontrol edip tekrar dene.');
+  } finally { clearTimeout(zaman); }
   const ham = await r.text();
   let d;
   try { d = JSON.parse(ham); }
@@ -1514,10 +1526,13 @@ $('karmaOkuBtn').addEventListener('click', async () => {
   $('karmaOkuBtn').disabled = true;
   $('karmaOkuBtn').textContent = 'Yıldızlar hesaplanıyor…';
   try {
-    const d = await cagir('/karma', yukGovde({
+    // Karma'nin agirligi haritada; sunucu yalnizca on yuzu okuyor.
+    // Profilleri ve avuci gondermek bosuna yukleme suresi demek.
+    const d = await cagir('/karma', {
+      image: anaGor.b64, mediaType: 'image/jpeg',
       birth: { year: y, month: a, day: g, hour: saat, city: $('kSehir').value.trim() },
       name: $('kAd').value.trim()
-    }));
+    });
     karmaCiz(d);
     Ses.acilis();
   } catch (err) { hata('hataSima', err.message); }
