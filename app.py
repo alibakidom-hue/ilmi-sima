@@ -28,7 +28,10 @@ try:
 except Exception:
     ASTRO_OK = False
 
-app = Flask(__name__, static_folder=".", static_url_path="")
+# static_folder=None ÖNEMLİ: aksi halde Flask uygulama klasöründeki HER dosyayı
+# kök adresten servis eder — app.py, guard.py, hatta .env dahil. Servis edilecek
+# her dosyanın açık bir rotası olmalı.
+app = Flask(__name__, static_folder=None)
 
 # ---- Doğum haritası yardımcıları ----
 ZODIAC_TR = ["Koç", "Boğa", "İkizler", "Yengeç", "Aslan", "Başak",
@@ -597,7 +600,7 @@ SIMA_TOOL = {
 }
 
 
-SURUM = "nur-1"   # arayüz sürümü — dağıtımın gerçekten yenilendiğini doğrulamak için
+SURUM = "nur-3"   # arayüz sürümü — dağıtımın gerçekten yenilendiğini doğrulamak için
 
 
 @app.route("/")
@@ -614,6 +617,93 @@ def index():
 @app.route("/_surum")
 def _surum():
     return jsonify({"surum": SURUM})
+
+
+# ---- PWA: ana ekrana eklenebilirlik ----------------------------------------
+VARLIKLAR = {
+    "ikon-192.png", "ikon-512.png", "ikon-maskable.png",
+    "apple-touch-icon.png", "favicon.png",
+}
+
+
+@app.route("/varlik/<ad>")
+def varlik(ad):
+    if ad not in VARLIKLAR:
+        return "", 404
+    r = send_from_directory("varlik", ad)
+    r.headers["Cache-Control"] = "public, max-age=604800"
+    return r
+
+
+@app.route("/manifest.webmanifest")
+def manifest():
+    return jsonify({
+        "name": "İlm-i Sîmâ",
+        "short_name": "Sîmâ",
+        "description": "Yüz hatlarından mizaç kıraati — doğum haritası, ebced ve el okumasıyla.",
+        "start_url": "/",
+        "scope": "/",
+        "display": "standalone",
+        "orientation": "portrait",
+        "background_color": "#0A0908",
+        "theme_color": "#0A0908",
+        "lang": "tr",
+        "dir": "ltr",
+        "categories": ["lifestyle", "entertainment"],
+        "icons": [
+            {"src": "/varlik/ikon-192.png", "sizes": "192x192", "type": "image/png"},
+            {"src": "/varlik/ikon-512.png", "sizes": "512x512", "type": "image/png"},
+            {"src": "/varlik/ikon-maskable.png", "sizes": "512x512",
+             "type": "image/png", "purpose": "maskable"},
+        ],
+    })
+
+
+# Belge için ağ önceliği (eski arayüz takılı kalmasın), varlıklar için önbellek.
+SW_JS = """
+const AD = 'sima-%s';
+const VARLIK = ['/varlik/ikon-192.png', '/varlik/apple-touch-icon.png', '/varlik/favicon.png'];
+
+self.addEventListener('install', e => {
+  self.skipWaiting();
+  e.waitUntil(caches.open(AD).then(c => c.addAll(VARLIK)).catch(() => {}));
+});
+
+self.addEventListener('activate', e => {
+  e.waitUntil(caches.keys().then(k =>
+    Promise.all(k.filter(x => x !== AD).map(x => caches.delete(x)))).then(() => self.clients.claim()));
+});
+
+self.addEventListener('fetch', e => {
+  const r = e.request;
+  if (r.method !== 'GET') return;
+  const u = new URL(r.url);
+  if (u.origin !== location.origin) return;
+
+  // Belge: her zaman ağdan. Ağ yoksa son çare önbellek.
+  if (r.mode === 'navigate') {
+    e.respondWith(fetch(r).catch(() => caches.match('/') || new Response(
+      '<h1 style="font-family:serif;color:#C9A84C;background:#0A0908;padding:40px">' +
+      'Bağlantı yok. Üstat çevrimdışı okuyamaz.</h1>',
+      { headers: { 'Content-Type': 'text/html; charset=utf-8' } })));
+    return;
+  }
+  // Varlıklar: önce önbellek.
+  if (u.pathname.startsWith('/varlik/')) {
+    e.respondWith(caches.match(r).then(c => c || fetch(r).then(res => {
+      const kopya = res.clone();
+      caches.open(AD).then(ch => ch.put(r, kopya)).catch(() => {});
+      return res;
+    })));
+  }
+});
+""" % SURUM
+
+
+@app.route("/sw.js")
+def sw():
+    return Response(SW_JS, mimetype="application/javascript",
+                    headers={"Cache-Control": "no-cache", "Service-Worker-Allowed": "/"})
 
 
 @app.route("/analyze", methods=["POST"])
