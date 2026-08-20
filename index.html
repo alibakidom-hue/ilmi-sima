@@ -982,7 +982,7 @@ class NurYuz {
    İLM-İ SÎMÂ — uygulama katmanı
    ========================================================= */
 
-const SURUM = 'nur-5';
+const SURUM = 'nur-6';
 
 /* ---- ortam sorgusu: her tarayıcıda matchMedia yok ---- */
 function medya(q) {
@@ -1313,6 +1313,59 @@ async function modelYukle() {
   return modelHazir;
 }
 
+let sonOlcum = null;
+
+/* Yüz noktalarından ölçüm çıkar.
+   Hepsi ORAN — fotoğrafın boyutundan, mesafeden, çözünürlükten bağımsız.
+   Aynı yüz her seferinde aynı sayıları verir; kıraatin tutarlılığı buradan gelir. */
+function olcumCikar(p, kutu) {
+  const u = (a, b) => Math.hypot(p[a].x - p[b].x, p[a].y - p[b].y);
+  const y = i => p[i].y, x = i => p[i].x;
+  const yuvarla = (v, n) => Math.round(v * Math.pow(10, n || 2)) / Math.pow(10, n || 2);
+  try {
+    const yuzGen = u(0, 16);
+    const kasY = (y(19) + y(24)) / 2;
+    const burunDip = y(33), cene = y(8);
+    const alinUst = kutu ? kutu.y : kasY - (burunDip - kasY);
+
+    const ust = kasY - alinUst, orta = burunDip - kasY, alt = cene - burunDip;
+    const toplam = ust + orta + alt;
+    const gozYuk = (u(37, 41) + u(38, 40) + u(43, 47) + u(44, 46)) / 4;
+
+    // simetri: sağ ve sol eşlerin orta eksene uzaklığı ne kadar örtüşüyor
+    const eksen = (x(27) + x(8)) / 2;
+    const esler = [[0,16],[1,15],[2,14],[3,13],[4,12],[5,11],[17,26],[18,25],
+                   [19,24],[21,22],[36,45],[39,42],[31,35],[48,54]];
+    let fark = 0;
+    esler.forEach(([a, b]) => {
+      const sa = Math.abs(x(a) - eksen), sb = Math.abs(x(b) - eksen);
+      fark += Math.abs(sa - sb) / Math.max(sa, sb, 1);
+    });
+    const simetri = 1 - fark / esler.length;
+
+    // çene açısı: 8 numaralı noktada 6 ve 10 arasındaki açı
+    const v1 = { x: x(6) - x(8), y: y(6) - y(8) }, v2 = { x: x(10) - x(8), y: y(10) - y(8) };
+    const aci = Math.acos((v1.x * v2.x + v1.y * v2.y) /
+      (Math.hypot(v1.x, v1.y) * Math.hypot(v2.x, v2.y) || 1)) * 180 / Math.PI;
+
+    return {
+      yuz_orani:    yuvarla(yuzGen / (cene - alinUst)),
+      ust_bolge:    yuvarla(ust / toplam),
+      orta_bolge:   yuvarla(orta / toplam),
+      alt_bolge:    yuvarla(alt / toplam),
+      elmacik_cene: yuvarla(u(1, 15) / u(5, 11)),
+      cene_acisi:   Math.round(aci),
+      goz_arasi:    yuvarla(u(39, 42) / u(36, 39)),
+      kas_goz:      yuvarla((((y(37) + y(38)) / 2 - y(19)) + ((y(43) + y(44)) / 2 - y(24))) / 2 / gozYuk),
+      burun_orani:  yuvarla(u(31, 35) / yuzGen),
+      agiz_burun:   yuvarla(u(48, 54) / u(31, 35)),
+      dudak_orani:  yuvarla(Math.abs(y(51) - y(62)) / Math.max(Math.abs(y(66) - y(57)), 1)),
+      simetri:      yuvarla(simetri),
+      kas_farki:    yuvarla((y(24) - y(19)) / gozYuk)
+    };
+  } catch (e) { return null; }
+}
+
 async function noktaCiz() {
   const gor = $('onGor'), cv = $('nokta');
   const ctx = cv.getContext('2d');
@@ -1324,9 +1377,10 @@ async function noktaCiz() {
     d = await faceapi.detectSingleFace(gor, new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: .3 }))
       .withFaceLandmarks();
   } catch (e) { d = null; }
-  if (!d) { $('olcuNokta').textContent = '—'; $('olcuGuven').textContent = '—'; return; }
+  if (!d) { sonOlcum = null; $('olcuNokta').textContent = '—'; $('olcuGuven').textContent = '—'; return; }
   const r = faceapi.resizeResults(d, { width: cv.width, height: cv.height });
   const p = r.landmarks.positions;
+  sonOlcum = olcumCikar(p, r.detection && r.detection.box);
   ctx.fillStyle = 'rgba(235,208,138,.85)';
   ctx.strokeStyle = 'rgba(201,168,76,.28)';
   ctx.lineWidth = .6;
@@ -1399,6 +1453,7 @@ function yukGovde(ek) {
   if (gorR) { p.imageRight = gorR.b64; p.mediaTypeRight = 'image/jpeg'; }
   if (gorL) { p.imageLeft = gorL.b64; p.mediaTypeLeft = 'image/jpeg'; }
   if (gorH) { p.imageHand = gorH.b64; p.mediaTypeHand = 'image/jpeg'; }
+  if (sonOlcum) p.olcum = sonOlcum;
   return Object.assign(p, ek || {});
 }
 
@@ -1486,7 +1541,7 @@ function sonucCiz(d) {
     const g = t.intensity >= 80 ? 'Güçlü' : t.intensity >= 60 ? 'Belirgin' : 'Mütevazı';
     return `<div class="kart">
       <div class="kart-tepe"><span class="kart-ad">${t.name || ''}</span><span class="kart-ar">${t.arabic || ''}</span></div>
-      <span class="etiket">Görülen</span><div class="gorulen">${t.gozlem || t.description || ''}</div>
+      <span class="etiket">Görülen</span><div class="gorulen">${t.gozlem || ''}</div>
       ${t.hukum ? `<span class="etiket">Hüküm</span><div class="hukum-metin">${t.hukum}</div>` : ''}
       ${t.gelecek ? `<div class="ileri">→ ${t.gelecek}</div>` : ''}
       <div class="guc"><div class="guc-yol"><div class="guc-dolu" data-en="${t.intensity || 50}%"></div></div><span class="guc-ad">${g}</span></div>
@@ -1504,6 +1559,12 @@ function sonucCiz(d) {
   } else gorunur($('elBolum'), false);
 
   $('genelKiraat').textContent = d.overall || '';
+  // Yarım gelen kıraat sessizce boş bölüm göstermesin.
+  if (!(d.traits || []).length || !d.overall) {
+    $('traitler').innerHTML = $('traitler').innerHTML ||
+      '<div class="kart"><div class="gorulen">Bu kıraat eksik geldi. ' +
+      'Yeni okuma yapıp tekrar dene.</div></div>';
+  }
   $('detayGovde').classList.remove('acik');
   $('detayBtn').textContent = '▾ Sîmânın tamamını oku';
   gorunur($('karmaDavet'), true);
@@ -1553,6 +1614,7 @@ $('karmaOkuBtn').addEventListener('click', async () => {
     // Profilleri ve avuci gondermek bosuna yukleme suresi demek.
     const d = await cagir('/karma', {
       image: anaGor.b64, mediaType: 'image/jpeg',
+      olcum: sonOlcum || undefined,
       birth: { year: y, month: a, day: g, hour: saat, city: $('kSehir').value.trim() },
       name: $('kAd').value.trim()
     });
