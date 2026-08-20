@@ -629,7 +629,7 @@ SIMA_TOOL = {
 }
 
 
-SURUM = "nur-3"   # arayüz sürümü — dağıtımın gerçekten yenilendiğini doğrulamak için
+SURUM = "nur-4"   # arayüz sürümü — dağıtımın gerçekten yenilendiğini doğrulamak için
 
 
 @app.route("/")
@@ -955,7 +955,7 @@ gibi yargı DEĞİL. Yalnızca istenen JSON yapısında cevap ver."""
         result = gemini_json(
             karma_parts + [karma_prompt + (MULTI_ANGLE_NOTE if karma_angles > 1 else "")],
             KARMA_TOOL["input_schema"],
-            4500,
+            2800,
             uc="karma",
             sicaklik=0.35,
         )
