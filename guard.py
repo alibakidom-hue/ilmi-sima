@@ -53,6 +53,8 @@ KOTALAR = {
     "eslesme": (_i("KOTA_ESLESME", 2), _i("KOTA_IP_ESLESME", 30)),
     "gunluk":  (_i("KOTA_GUNLUK", 3),  _i("KOTA_IP_GUNLUK", 120)),
     "ses":     (_i("KOTA_SES", 10),    _i("KOTA_IP_SES", 200)),
+    # Sohbet ucuz (Haiku, 400 token) — cömert olabiliriz.
+    "sor":     (_i("KOTA_SOR", 25),    _i("KOTA_IP_SOR", 400)),
 }
 
 # Ani seri (burst) freni: aynı cihazdan iki ağır istek arası minimum saniye.
