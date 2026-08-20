@@ -629,7 +629,7 @@ SIMA_TOOL = {
 }
 
 
-SURUM = "nur-4"   # arayüz sürümü — dağıtımın gerçekten yenilendiğini doğrulamak için
+SURUM = "nur-5"   # arayüz sürümü — dağıtımın gerçekten yenilendiğini doğrulamak için
 
 
 @app.route("/")
@@ -757,7 +757,7 @@ def analyze():
                       image_part(hand, data.get("mediaTypeHand", "image/jpeg"))]
 
         prompt = SIMA_PROMPT + (MULTI_ANGLE_NOTE if n_angles > 1 else "")
-        result = gemini_json(parts + [prompt], SIMA_TOOL["input_schema"], 3400,
+        result = gemini_json(parts + [prompt], SIMA_TOOL["input_schema"], 2200,
                              uc="analyze", sicaklik=0.35)
 
         if result is None:
