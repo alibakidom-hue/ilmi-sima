@@ -19,7 +19,34 @@ import urllib.error
 from flask import Flask, request, jsonify, send_from_directory, Response
 import anthropic
 
-from guard import korumali, kaydet_kullanim, guard_durum
+try:
+    from guard import korumali, kaydet_kullanim, guard_durum
+except ImportError:
+    # guard.py repoya yüklenmemiş. Uygulamayı çökertme — ama pahalı uçları da
+    # korumasız açma. Site ayakta kalır, okuma uçları kapalı kalır.
+    import logging
+    logging.error("guard.py bulunamadi! Pahali uclar kapatildi. Dosyayi repoya ekle.")
+
+    def korumali(uc, agir=True):
+        def sar(fn):
+            from functools import wraps
+
+            @wraps(fn)
+            def ic(*a, **kw):
+                if not agir:
+                    return fn(*a, **kw)
+                return jsonify({
+                    "error": "kalkan_yok",
+                    "mesaj": "Üstat şu an kıraat yapamıyor. Kısa bir bakımdayız."
+                }), 503
+            return ic
+        return sar
+
+    def kaydet_kullanim(*a, **kw):
+        return 0.0
+
+    def guard_durum():
+        return {"uyari": "guard.py yuklu degil"}
 
 # Doğum haritası hesabı (Moshier efemerisi — dış veri/internet gerektirmez)
 try:
