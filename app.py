@@ -597,9 +597,23 @@ SIMA_TOOL = {
 }
 
 
+SURUM = "nur-1"   # arayüz sürümü — dağıtımın gerçekten yenilendiğini doğrulamak için
+
+
 @app.route("/")
 def index():
-    return send_from_directory(".", "index.html")
+    # index.html ASLA önbelleğe alınmasın. Aksi halde kullanıcı (özellikle iOS
+    # Safari) günlerce eski arayüzü görür ve "deploy oldu mu?" belirsiz kalır.
+    r = send_from_directory(".", "index.html")
+    r.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    r.headers["Pragma"] = "no-cache"
+    r.headers["X-Sima-Surum"] = SURUM
+    return r
+
+
+@app.route("/_surum")
+def _surum():
+    return jsonify({"surum": SURUM})
 
 
 @app.route("/analyze", methods=["POST"])
@@ -1161,7 +1175,8 @@ def _durum():
     anahtar = os.environ.get("DURUM_ANAHTARI")
     if not anahtar or request.args.get("k") != anahtar:
         return "", 404
-    return jsonify(guard_durum())
+    d = guard_durum(); d["surum"] = SURUM
+    return jsonify(d)
 
 
 if __name__ == "__main__":
