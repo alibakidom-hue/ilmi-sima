@@ -708,7 +708,7 @@ def _hata_json(e):
     return jsonify({"error": "sunucu", "mesaj": mesaj}), kod
 
 
-SURUM = "nur-11"   # arayüz sürümü — dağıtımın gerçekten yenilendiğini doğrulamak için
+SURUM = "nur-13"   # arayüz sürümü — dağıtımın gerçekten yenilendiğini doğrulamak için
 
 
 @app.route("/")
@@ -1504,6 +1504,61 @@ def ses():
         return jsonify({"error": "ses", "mesaj": aciklama}), 502
     except Exception as e:
         return jsonify({"error": f"Beklenmeyen hata: {str(e)}"}), 500
+
+
+@app.route("/_sesler")
+def _sesler():
+    """Bu anahtarın API'den KULLANABİLDİĞİ sesleri listeler.
+
+    Kütüphaneden ses seçip 402 yemek yerine, doğrudan hesabına tanımlı
+    sesleri görürsün. Listede çıkan her ses çalışır.
+    Kullanım: /_sesler?k=<DURUM_ANAHTARI>
+    """
+    anahtar = os.environ.get("DURUM_ANAHTARI")
+    if not anahtar or request.args.get("k") != anahtar:
+        return "", 404
+    if not ELEVEN_API_KEY:
+        return jsonify({"hata": "ELEVENLABS_API_KEY tanimli degil"}), 501
+    try:
+        req = urllib.request.Request(
+            "https://api.elevenlabs.io/v1/voices",
+            headers={"xi-api-key": ELEVEN_API_KEY},
+        )
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            ham = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        return jsonify({"hata": f"ElevenLabs {e.code}",
+                        "detay": e.read().decode("utf-8", errors="ignore")[:300]}), 502
+    except Exception as e:
+        return jsonify({"hata": str(e)[:200]}), 500
+
+    liste = []
+    for v in ham.get("voices", []):
+        etiket = v.get("labels") or {}
+        liste.append({
+            "ad": v.get("name"),
+            "voice_id": v.get("voice_id"),
+            "tur": v.get("category"),          # premade / cloned / generated ...
+            "cinsiyet": etiket.get("gender"),
+            "yas": etiket.get("age"),
+            "tanim": etiket.get("description"),
+            "aksan": etiket.get("accent"),
+        })
+    # Erkek ve derin/olgun olanları öne al — üstat karakterine en yakınlar
+    def puan(v):
+        p = 0
+        if (v.get("cinsiyet") or "").lower() == "male":
+            p -= 4
+        for k in ("deep", "calm", "mature", "narration", "old", "middle"):
+            if k in ((v.get("tanim") or "") + " " + (v.get("yas") or "")).lower():
+                p -= 2
+        return p
+    liste.sort(key=puan)
+    return jsonify({
+        "kullanilabilir_ses_sayisi": len(liste),
+        "not": "Buradaki her voice_id API'den calisir. ELEVENLABS_VOICE_ID'ye birini yaz.",
+        "sesler": liste,
+    })
 
 
 @app.route("/_durum")
