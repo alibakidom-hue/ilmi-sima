@@ -899,7 +899,7 @@ class NurYuz {
     const g = this.o.gez;
     this.gezHedef.x = (Math.random() * 2 - 1) * g;
     this.gezHedef.y = (Math.random() * 2 - 1) * g * 0.5;
-    this._gezT = setTimeout(() => this._gezZamanla(), 4200 + Math.random() * 3600);
+    this._gezT = setTimeout(() => this._gezZamanla(), 2300 + Math.random() * 2200);
   }
 
   /* --- dışarıya açık API (eski sınıfla birebir aynı) --- */
@@ -979,8 +979,8 @@ class NurYuz {
     this.C += (hedefC - this.C) * Math.min(1, dt * 1.6);
     const C = this.C * Dy;
 
-    this.gezSu.x += (this.gezHedef.x - this.gezSu.x) * Math.min(1, dt * 0.55);
-    this.gezSu.y += (this.gezHedef.y - this.gezSu.y) * Math.min(1, dt * 0.55);
+    this.gezSu.x += (this.gezHedef.x - this.gezSu.x) * Math.min(1, dt * 0.85);
+    this.gezSu.y += (this.gezHedef.y - this.gezSu.y) * Math.min(1, dt * 0.85);
     this.bak.x += (this.hedef.x - this.bak.x) * Math.min(1, dt * 3.4);
     this.bak.y += (this.hedef.y - this.bak.y) * Math.min(1, dt * 3.4);
 
@@ -994,8 +994,14 @@ class NurYuz {
     const payY = Math.max(0, h / 2 - R * 1.20);
     const gezX = Math.min(w * 0.26, payX);
     const gezY = Math.min(h * 0.24, payY);
-    const cx = w / 2 + this.gezSu.x * gezX + Math.sin(t * 0.27) * R * 0.045;
-    const cy = h / 2 + this.gezSu.y * gezY + Math.sin(t * 0.41) * R * 0.035;
+    // Rastgele gezinmenin ÜSTÜNE sürekli bir yörünge biniyor: üstat hedefe
+    // varıp durmuyor, hiç durmadan salınıyor.
+    const yorX = Math.sin(t * 0.21) * 0.42 + Math.sin(t * 0.13 + 1.7) * 0.26;
+    const yorY = Math.cos(t * 0.17) * 0.38 + Math.sin(t * 0.11 + 0.6) * 0.22;
+    const kx = Math.max(-1, Math.min(1, this.gezSu.x + yorX));
+    const ky = Math.max(-1, Math.min(1, this.gezSu.y + yorY));
+    const cx = w / 2 + kx * gezX + Math.sin(t * 0.27) * R * 0.045;
+    const cy = h / 2 + ky * gezY + Math.sin(t * 0.41) * R * 0.035;
 
     // İz bırakarak sil — saydamlığı koruyan sönümleme
     ctx.globalCompositeOperation = 'destination-out';
@@ -1093,7 +1099,7 @@ class NurYuz {
    İLM-İ SÎMÂ — uygulama katmanı
    ========================================================= */
 
-const SURUM = 'nur-9';
+const SURUM = 'nur-10';
 
 /* ---- ortam sorgusu: her tarayıcıda matchMedia yok ---- */
 function medya(q) {
@@ -1114,9 +1120,11 @@ var USTAT_SOZ = [
 ];
 var ONERILER = [
   'Bu sîmâ aşkta ne söylüyor?',
-  'İşimde neye dikkat etmeliyim?',
-  'En zayıf yanım ne?',
-  'Bu yıl beni ne bekliyor?',
+  'Önümüzdeki yıl işimde ne bekliyor?',
+  'Haritamda hangi dönem lehime?',
+  'En zayıf yanım ne, nasıl törpülerim?',
+  'Yıldızlarım sîmâmla ne söylüyor?',
+  'Bereketim nereden gelir?',
   'İnsanlar beni nasıl görüyor?',
   'Neyi bırakmam gerek?'
 ];
@@ -1125,6 +1133,7 @@ var divanYuz = null;
 var sohbetGecmis = [];
 var sorUcuyor = false;
 var sesCalan = null;
+var sonKarma = null;
 
 /* ---- dokunsal geri bildirim ---- */
 function titre(desen) {
@@ -1836,6 +1845,10 @@ function karmaCiz(d) {
   }).join('');
 
   $('karmaKiraat').textContent = d.kiraat || '';
+  sonKarma = d;                     // üstat sohbetinde kullanılsın
+  D.yaz('sima_son_karma', d);       // sayfa yenilense de kalsın
+  sohbetGecmis = [];
+  if ($('sohbet')) $('sohbet').innerHTML = '';
   gorunur($('karmaForm'), false);
   gorunur($('karmaSonuc'), true);
   $('karmaSonuc').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -2192,6 +2205,30 @@ function kiraatOzeti() {
   if (d.overall) s.push('Genel kıraat: ' + d.overall);
   const b = D.al(A_DOGUM, null);
   if (b) s.push(`Doğum: ${b.day}.${b.month}.${b.year}${b.name ? ' — ' + b.name : ''}`);
+
+  // Doğum haritası çıkarıldıysa üstat onu da görsün.
+  const k = sonKarma || D.al('sima_son_karma', null);
+  if (k) {
+    s.push('');
+    s.push('=== DOĞUM HARİTASI (Swiss Ephemeris ile hesaplandı, kesindir) ===');
+    if (k.baslik) s.push('Başlık: ' + k.baslik);
+    if (k.harita_yoneticisi) s.push('Harita yöneticisi: ' + k.harita_yoneticisi);
+    if (k.element_dengesi) s.push('Element dengesi: ' +
+      Object.entries(k.element_dengesi).map(([e, n]) => e + ' ' + n).join(', '));
+    const nsat = Object.entries(k.natal || {}).map(([p, v]) =>
+      `${p} ${v.burc || ''}${v.derece != null ? ' ' + v.derece + '°' : ''}` +
+      `${v.ev ? ' (' + v.ev + '. ev)' : ''}${v.retro ? ' ℞' : ''}`);
+    if (nsat.length) s.push('Yerleşimler: ' + nsat.join(' | '));
+    if ((k.acilar || []).length) s.push('Açılar: ' +
+      k.acilar.map(a => `${a.gezegen1} ${a.aci} ${a.gezegen2}`).join(', '));
+    (k.belirgin_yerlesimler || []).forEach(y => s.push(`İmza — ${y.yerlesim}: ${y.anlami || ''}`));
+    (k.hayat_alanlari || []).forEach(a =>
+      s.push(`${a.alan}: ${a.yorum || ''}${a.yol ? ' → ' + a.yol : ''}`));
+    (k.kopruler || []).forEach(c => s.push(`Köprü — ${c.yuz} ⟷ ${c.yildiz}: ${c.yorum || ''}`));
+    if (k.ebced && k.ebced.toplam != null)
+      s.push(`Ebced: ${k.ebced.isim_arapca || ''} = ${k.ebced.toplam}. ${k.ebced_yorum || ''}`);
+    if (k.kiraat) s.push('Birleşik kıraat: ' + k.kiraat);
+  }
   return s.join('\n');
 }
 
@@ -2323,8 +2360,28 @@ async function soruGonder() {
 
 /* ---------------------------------------------------------
    SES — üstadın sesi, ağzı sesin genliğiyle kıpırdar
+
+   iOS'ta ses ancak KULLANICI DOKUNUŞUNUN İÇİNDE başlatılırsa çalar.
+   Akışta araya `await fetch` giriyor, dokunuş bağlamı düşüyor ve ses
+   hiç çıkmıyordu. Çözüm: elementi dokunuş anında sessiz bir kayıtla
+   oynatıp kilidini açmak, sonra kaynağını değiştirmek.
    --------------------------------------------------------- */
-let sesCtx = null, cozumleyici = null, sesKaynak = null;
+let sesCtx = null, cozumleyici = null, sesKaynak = null, sesAcildi = false;
+
+const SESSIZ = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAAB9AAACABAAZGF0YQAAAAA=';
+
+function sesKilidiAc() {
+  if (sesAcildi) return;
+  sesAcildi = true;
+  try {
+    if (!sesCtx) sesCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (sesCtx.state === 'suspended') sesCtx.resume();
+  } catch (e) {}
+  try { const a = new Audio(SESSIZ); const p = a.play(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+  try { if (window.speechSynthesis) speechSynthesis.getVoices(); } catch (e) {}
+}
+['touchstart', 'mousedown', 'keydown'].forEach(o =>
+  addEventListener(o, sesKilidiAc, { once: true, passive: true }));
 
 function agizSurucu(yuz) {
   if (!cozumleyici) return;
@@ -2350,35 +2407,74 @@ async function seslendirMetin(metin) {
   if (!metin) return;
   if (sesCalan) { try { sesCalan.pause(); } catch (e) {} sesCalan = null; }
   const yuz = divanYuz;
+
+  // ADIM 1 — dokunuş hâlâ geçerliyken elementin kilidini aç.
+  // Bu satırlar `await`'ten ÖNCE çalışmak zorunda.
+  sesKilidiAc();
+  let ses = null;
+  try {
+    ses = new Audio();
+    ses.preload = 'auto';
+    ses.src = SESSIZ;
+    const p = ses.play();
+    if (p && p.catch) p.catch(() => {});
+  } catch (e) { ses = null; }
+
   if (yuz) yuz.konusuyor = true;
   divanHal('Üstat söylüyor');
 
+  let blob = null;
   try {
     const r = await fetch('/ses', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Sima-Cihaz': CIHAZ },
       body: JSON.stringify({ text: metin })
     });
-    if (!r.ok) throw new Error('ses yok');
-    const blob = await r.blob();
-    const ses = new Audio(URL.createObjectURL(blob));
-    ses.crossOrigin = 'anonymous';
-    sesCalan = ses;
-    try {
-      if (!sesCtx) sesCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (sesCtx.state === 'suspended') await sesCtx.resume();
-      cozumleyici = sesCtx.createAnalyser();
-      cozumleyici.fftSize = 512;
-      sesKaynak = sesCtx.createMediaElementSource(ses);
-      sesKaynak.connect(cozumleyici);
-      cozumleyici.connect(sesCtx.destination);
-    } catch (e) { cozumleyici = null; }
-    ses.onended = () => { if (yuz) { yuz.agiz = 0; yuz.konusuyor = false; } divanHal('Divan kuruldu'); };
-    await ses.play();
-    if (cozumleyici) agizSurucu(yuz); else sahteAgiz(yuz, ses);
+    if (!r.ok) {
+      let sebep = 'Ses servisi cevap vermedi (' + r.status + ').';
+      try { const j = await r.json(); if (j.mesaj || j.error) sebep = j.mesaj || j.error; } catch (e) {}
+      throw new Error(sebep);
+    }
+    blob = await r.blob();
+    if (!blob || blob.size < 500) throw new Error('Ses dosyası boş geldi.');
   } catch (e) {
-    // ElevenLabs yoksa tarayıcı sesine düş — pesleştirip yavaşlatıyoruz
+    // Sessizce yutma: neden çalmadığını söyle, sonra tarayıcı sesini dene.
+    if (yuz) yuz.konusuyor = false;
+    divanHal('Divan kuruldu');
+    mudde(String(e.message).slice(0, 90));
     tarayiciSesi(metin, yuz);
+    return;
+  }
+
+  // ADIM 2 — kilidi açılmış elemente gerçek kaydı koy.
+  try {
+    if (!ses) ses = new Audio();
+    ses.src = URL.createObjectURL(blob);
+    sesCalan = ses;
+    ses.onended = () => { if (yuz) { yuz.agiz = 0; yuz.konusuyor = false; } divanHal('Divan kuruldu'); };
+
+    // Çözümleyici SADECE bağlam gerçekten çalışıyorsa takılır. Askıdayken
+    // takılırsa sesi kendi üzerine alır ve hiçbir şey duyulmaz.
+    let bagli = false;
+    try {
+      if (sesCtx && sesCtx.state === 'suspended') await sesCtx.resume();
+      if (sesCtx && sesCtx.state === 'running' && !ses._bagli) {
+        cozumleyici = sesCtx.createAnalyser();
+        cozumleyici.fftSize = 512;
+        sesKaynak = sesCtx.createMediaElementSource(ses);
+        sesKaynak.connect(cozumleyici);
+        cozumleyici.connect(sesCtx.destination);
+        ses._bagli = true;
+        bagli = true;
+      }
+    } catch (e) { cozumleyici = null; }
+
+    await ses.play();
+    if (bagli && cozumleyici) agizSurucu(yuz); else sahteAgiz(yuz, ses);
+  } catch (e) {
+    if (yuz) yuz.konusuyor = false;
+    divanHal('Divan kuruldu');
+    mudde('Ses çalınamadı. Telefonun sessiz modda olabilir.');
   }
 }
 
@@ -2393,6 +2489,7 @@ function sahteAgiz(yuz, ses) {
 
 function tarayiciSesi(metin, yuz) {
   if (!window.speechSynthesis) { if (yuz) yuz.konusuyor = false; divanHal('Divan kuruldu'); return; }
+  if (yuz) yuz.konusuyor = true;
   const s = new SpeechSynthesisUtterance(metin);
   const sesler = speechSynthesis.getVoices();
   const tr = sesler.filter(v => /tr[-_]TR|Turkish|Türk/i.test(v.lang + ' ' + v.name));
