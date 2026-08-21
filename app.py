@@ -708,7 +708,7 @@ def _hata_json(e):
     return jsonify({"error": "sunucu", "mesaj": mesaj}), kod
 
 
-SURUM = "nur-10"   # arayüz sürümü — dağıtımın gerçekten yenilendiğini doğrulamak için
+SURUM = "nur-11"   # arayüz sürümü — dağıtımın gerçekten yenilendiğini doğrulamak için
 
 
 @app.route("/")
@@ -1493,11 +1493,13 @@ def ses():
         import logging
         logging.error("ElevenLabs %s: %s", e.code, detail[:500])
         aciklama = {
-            401: "Ses anahtarı geçersiz. ELEVENLABS_API_KEY'i kontrol et.",
+            401: "Ses anahtarı geçersiz ya da kota doldu.",
+            402: ("Bu ses ücretsiz hesapla API'den kullanılamıyor. "
+                  "Hazır (premade) bir ses seç ya da Starter planına geç."),
             403: "Ses anahtarının izni yok. Text to Speech iznini aç.",
-            404: "Ses kimliği bulunamadı. Sesi kütüphanene ekledin mi?",
+            404: "Ses kimliği bulunamadı. Voice ID'yi kontrol et.",
             422: "Ses ayarları kabul edilmedi.",
-            429: "ElevenLabs kotası doldu.",
+            429: "Çok sık istek gitti. Biraz bekle.",
         }.get(e.code, f"Ses servisi hata verdi ({e.code}).")
         return jsonify({"error": "ses", "mesaj": aciklama}), 502
     except Exception as e:
