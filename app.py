@@ -708,7 +708,7 @@ def _hata_json(e):
     return jsonify({"error": "sunucu", "mesaj": mesaj}), kod
 
 
-SURUM = "nur-9"   # arayüz sürümü — dağıtımın gerçekten yenilendiğini doğrulamak için
+SURUM = "nur-10"   # arayüz sürümü — dağıtımın gerçekten yenilendiğini doğrulamak için
 
 
 @app.route("/")
@@ -728,6 +728,8 @@ def _surum():
     return jsonify({
         "surum": SURUM,
         "kalkan": KALKAN,
+        "ses_anahtari": bool(ELEVEN_API_KEY),
+        "ses_kimligi": bool(ELEVEN_VOICE_ID),
         "durum": "hazir" if KALKAN else "guard.py EKSIK - okuma uclari kapali",
     })
 
@@ -1365,6 +1367,18 @@ kıraatin aşağıda. Şimdi sana bir soru soruyor.
 Asla "yapay zekâyım", "model", "sistem" gibi sözler kullanma. Fal bakan bir şovmen de \
 değilsin; ölçen, tartan, gerektiğinde susan bir kişisin.
 
+HARİTA VARSA MUTLAKA KULLAN: Elindeki kıraatte doğum haritası bölümü varsa cevabını \
+sadece yüze değil, yüz İLE haritayı birleştirerek kur. Somut ol: hangi gezegenin hangi \
+burçta/evde olduğunu söyle ve bunun yüzdeki hangi hatla örtüştüğünü göster. \
+Örnek kalıp: "Çenendeki genişlik ile Satürn'ün onuncu evdeki duruşu aynı şeyi söylüyor: geç \
+ama kalıcı yükseliş." Ebced değeri varsa uygun düştüğü yerde an.
+
+GELECEĞE DÖNÜK KONUŞ: Kişi "ne olacak" diye sorduğunda geçmişi özetleyip bırakma. Eğilim \
+dilinde ilerisi hakkında konuş: "önündeki dönemde", "bu yıl", "yaklaşan yıllarda". Ama \
+KESİN OLAY söyleme — meyli söyle, akıbeti değil. "Şu tarihte şu olacak" yasak; \
+"bu dönemde şuna meyilli olursun, dikkat edersen şuraya varır" serbest. Mümkünse \
+kişinin elindeki bir tutamağı göster: neyi yaparsa meyil lehine döner.
+
 SINIRLAR — bunlar sarsılmaz:
 - Elindeki kıraatte olmayan bir şeyi uydurma. Bilmiyorsan "sîmân bunu söylemiyor" de.
 - Tıbbi, hukuki ya da mali tavsiye verme. Sorulursa kişiyi ehline yönlendir.
@@ -1431,7 +1445,11 @@ def sor():
 @korumali("ses", agir=False)
 def ses():
     if not ELEVEN_API_KEY:
-        return jsonify({"error": "Ses servisi henüz kurulmamış (ELEVENLABS_API_KEY eksik)."}), 501
+        return jsonify({"error": "ses_kurulmadi",
+                        "mesaj": "Ses için ELEVENLABS_API_KEY tanımlı değil."}), 501
+    if not ELEVEN_VOICE_ID:
+        return jsonify({"error": "ses_kimligi_yok",
+                        "mesaj": "Ses için ELEVENLABS_VOICE_ID tanımlı değil."}), 501
     try:
         data = request.get_json()
         text = (data.get("text") or "").strip()
@@ -1472,7 +1490,16 @@ def ses():
 
     except urllib.error.HTTPError as e:
         detail = e.read().decode("utf-8", errors="ignore")
-        return jsonify({"error": f"Ses servisi hatası ({e.code}): {detail[:200]}"}), 502
+        import logging
+        logging.error("ElevenLabs %s: %s", e.code, detail[:500])
+        aciklama = {
+            401: "Ses anahtarı geçersiz. ELEVENLABS_API_KEY'i kontrol et.",
+            403: "Ses anahtarının izni yok. Text to Speech iznini aç.",
+            404: "Ses kimliği bulunamadı. Sesi kütüphanene ekledin mi?",
+            422: "Ses ayarları kabul edilmedi.",
+            429: "ElevenLabs kotası doldu.",
+        }.get(e.code, f"Ses servisi hata verdi ({e.code}).")
+        return jsonify({"error": "ses", "mesaj": aciklama}), 502
     except Exception as e:
         return jsonify({"error": f"Beklenmeyen hata: {str(e)}"}), 500
 
