@@ -324,7 +324,7 @@ body{background:var(--zemin)}
 
 /* ---------- divan: üstadın gezindiği alan ---------- */
 .divan{
-  position:relative;height:38vh;min-height:230px;max-height:340px;
+  position:relative;height:44vh;min-height:280px;max-height:380px;
   margin:0 -20px 4px;overflow:hidden
 }
 #divanTuval{position:absolute;inset:0;width:100%;height:100%}
@@ -984,14 +984,23 @@ class NurYuz {
     this.bak.x += (this.hedef.x - this.bak.x) * Math.min(1, dt * 3.4);
     this.bak.y += (this.hedef.y - this.bak.y) * Math.min(1, dt * 3.4);
 
-    const R = Math.min(w, h) * 0.32 * this.o.olcek;
-    const cx = w / 2 + this.gezSu.x * w * 0.26 + Math.sin(t * 0.27) * R * 0.045;
-    const cy = h / 2 + this.gezSu.y * h * 0.24 + Math.sin(t * 0.41) * R * 0.035;
+    // Yüksekliğe göre sınırla: alçak bir alanda 0.32 fazla gelir.
+    const R = Math.min(Math.min(w, h) * 0.32, h * 0.34) * this.o.olcek;
+
+    // Yüz ne kadar gezerse gezsin çerçeveyi terk etmemeli. Serbest bırakılırsa
+    // kısa/geniş tuvalde üstten kesilir ve geriye doymuş bir ışık lekesi kalır.
+    // Bu yüzden gezinme payını kalan boşluğa göre hesaplıyoruz.
+    const payX = Math.max(0, w / 2 - R * 1.02);
+    const payY = Math.max(0, h / 2 - R * 1.20);
+    const gezX = Math.min(w * 0.26, payX);
+    const gezY = Math.min(h * 0.24, payY);
+    const cx = w / 2 + this.gezSu.x * gezX + Math.sin(t * 0.27) * R * 0.045;
+    const cy = h / 2 + this.gezSu.y * gezY + Math.sin(t * 0.41) * R * 0.035;
 
     // İz bırakarak sil — saydamlığı koruyan sönümleme
     ctx.globalCompositeOperation = 'destination-out';
     ctx.globalAlpha = 1;
-    ctx.fillStyle = 'rgba(0,0,0,0.135)';
+    ctx.fillStyle = 'rgba(0,0,0,0.175)';
     ctx.fillRect(0, 0, w, h);
 
     ctx.globalCompositeOperation = 'lighter';
@@ -1067,9 +1076,9 @@ class NurYuz {
         const nx = cx + yon * nu * R, ny = cy + nv * R;
         const cn = 0.5 + 0.5 * Math.sin(t * (yon > 0 ? 1.27 : 1.05) + (yon > 0 ? 0 : 1.9));
         const taban = R * 0.085 * acik * (0.72 + cn * 0.42) * (0.55 + C * 0.65);
-        ctx.globalAlpha = (0.16 + C * 0.30) * Dy * acik;
+        ctx.globalAlpha = (0.12 + C * 0.22) * Dy * acik;
         ctx.drawImage(this.SPR_ALTIN, nx - taban * 3.1, ny - taban * 3.1, taban * 6.2, taban * 6.2);
-        ctx.globalAlpha = (0.30 + C * 0.52) * Dy * acik;
+        ctx.globalAlpha = (0.22 + C * 0.38) * Dy * acik;
         ctx.drawImage(this.SPR_NUR, nx - taban, ny - taban, taban * 2, taban * 2);
       }
     }
@@ -1084,7 +1093,7 @@ class NurYuz {
    İLM-İ SÎMÂ — uygulama katmanı
    ========================================================= */
 
-const SURUM = 'nur-8';
+const SURUM = 'nur-9';
 
 /* ---- ortam sorgusu: her tarayıcıda matchMedia yok ---- */
 function medya(q) {
@@ -2193,7 +2202,7 @@ function divanAc() {
 
   if (!divanYuz) {
     // gez yüksek: üstat alanın içinde geniş bir yay çizerek dolaşır
-    divanYuz = new NurYuz($('divanTuval'), { olcek: 1.0, gez: 0.9, tamEkran: true });
+    divanYuz = new NurYuz($('divanTuval'), { olcek: 0.92, gez: 0.7, tamEkran: true });
     setInterval(() => { if (!divanYuz.konusuyor && Math.random() < 0.5) divanYuz.kirp(); }, 3200);
     const izle = (x, y) => {
       const r = $('divanTuval').getBoundingClientRect();
