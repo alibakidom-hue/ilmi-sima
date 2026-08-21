@@ -829,8 +829,8 @@ class NurYuz {
     this.SPR_ISIK  = this._sprite('236,209,138');
     this.SPR_NUR   = this._sprite('255,246,224');
 
-    this._kur();
     this._boyut();
+    this._kur();
     this._resizeBound = () => this._boyut();
     window.addEventListener('resize', this._resizeBound);
     this._dongu = this._dongu.bind(this);
@@ -860,13 +860,25 @@ class NurYuz {
     this.cv.width = Math.round(this.w * dpr);
     this.cv.height = Math.round(this.h * dpr);
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    // Alan belirgin değiştiyse yoğunluğu korumak için yeniden üret.
+    const alan = this.w * this.h;
+    if (this.tanecik && this._sonAlan && alan > 0 &&
+        (alan / this._sonAlan > 1.5 || this._sonAlan / alan > 1.5)) {
+      this._kur();
+    }
+    if (alan > 0) this._sonAlan = alan;
   }
 
   _kur() {
     const rnd = (a, b) => a + Math.random() * (b - a);
-    // Cihaz gücüne göre tanecik sayısı — mobilde kare hızı düşmesin
-    const dar = Math.min(window.innerWidth, window.innerHeight) < 700;
-    const N = this.o.tamEkran ? (dar ? 460 : 820) : (dar ? 260 : 420);
+    // Tanecik sayısı TUVALİN GERÇEK ALANINA bağlı olmalı. Sabit sayı verilirse
+    // küçük bir alanda ışıklar üst üste biner ve yüz beyaza doyar — sîmâ değil,
+    // patlamış bir leke görünür. Yoğunluk her boyutta aynı kalsın.
+    const alan = Math.max(1, (this.w || 320) * (this.h || 240));
+    const guclu = Math.min(window.innerWidth, window.innerHeight) >= 700;
+    const N = Math.round(Math.max(110, Math.min(guclu ? 620 : 420, alan / 470)));
+    this._yogunluk = N / (alan / 470);   // 1'e yakınsa ideal
 
     this.tanecik = [];
     for (let i = 0; i < N; i++) {
@@ -885,7 +897,7 @@ class NurYuz {
 
     // Yükselen zerreler — atmosfer
     this.zerre = [];
-    const Z = this.o.tamEkran ? (dar ? 22 : 44) : 16;
+    const Z = Math.round(Math.max(8, Math.min(40, alan / 9000)));
     for (let i = 0; i < Z; i++) {
       this.zerre.push({
         u: rnd(-1.9, 1.9), v: rnd(-1.7, 1.9),
@@ -1061,14 +1073,14 @@ class NurYuz {
       const ait = this._alan(p.u, p.v, t);
       if (ait <= 0.02) continue;                    // göz/ağız oyuğu: hiç çizme
       const yog = Math.pow(Math.min(1, ait), 1.25);
-      const op = p.p * Dy * (0.055 + yog * (0.10 + C * 0.30));
+      const op = p.p * Dy * (0.045 + yog * (0.085 + C * 0.24));
       if (op < 0.012) continue;
 
       const nb = Math.sin(t * 1.6 + p.faz) * 0.18 + 1;
       const rr = R * p.r * nb * (1 + dag * 0.55) * (0.75 + yog * 0.75);
       const x = cx + p.u * R, y = cy + p.v * R;
 
-      ctx.globalAlpha = Math.min(0.9, op);
+      ctx.globalAlpha = Math.min(0.55, op);
       ctx.drawImage(p.cins ? this.SPR_ISIK : this.SPR_ALTIN, x - rr, y - rr, rr * 2, rr * 2);
     }
 
@@ -1099,7 +1111,7 @@ class NurYuz {
    İLM-İ SÎMÂ — uygulama katmanı
    ========================================================= */
 
-const SURUM = 'nur-11';
+const SURUM = 'nur-13';
 
 /* ---- ortam sorgusu: her tarayıcıda matchMedia yok ---- */
 function medya(q) {
