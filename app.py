@@ -404,6 +404,10 @@ MODEL = "claude-sonnet-4-6"
 MODEL_UCUZ = "claude-haiku-4-5-20251001"
 
 
+# SDK sürümüne göre temperature desteklenmeyebiliyor; ilk hatada kapatılır.
+_SICAKLIK_DESTEKLI = True
+
+
 def gemini_json(parts, schema, max_tokens, uc="?", model=None, sicaklik=1.0):
     """İçerik parçalarını modele gönderip yapılandırılmış JSON döndürür.
     parts: metin (str) ve/veya image_part() ile üretilmiş görsel bloklarından oluşan liste.
@@ -420,14 +424,25 @@ def gemini_json(parts, schema, max_tokens, uc="?", model=None, sicaklik=1.0):
         "description": "İstenen yapıda sonucu döndürür.",
         "input_schema": schema,
     }
-    message = client.messages.create(
-        model=model or MODEL,
-        max_tokens=max_tokens,
-        temperature=sicaklik,
-        tools=[tool],
-        tool_choice={"type": "tool", "name": "yapilandirilmis_cevap"},
-        messages=[{"role": "user", "content": content}],
-    )
+    kw = {
+        "model": model or MODEL,
+        "max_tokens": max_tokens,
+        "tools": [tool],
+        "tool_choice": {"type": "tool", "name": "yapilandirilmis_cevap"},
+        "messages": [{"role": "user", "content": content}],
+    }
+    if _SICAKLIK_DESTEKLI:
+        kw["temperature"] = sicaklik
+
+    try:
+        message = client.messages.create(**kw)
+    except TypeError as e:
+        # Kurulu SDK sürümü bu parametreyi tanımıyor. Bir kez öğren, bir daha deneme.
+        if "temperature" not in str(e):
+            raise
+        globals()["_SICAKLIK_DESTEKLI"] = False
+        kw.pop("temperature", None)
+        message = client.messages.create(**kw)
     # Gerçek token kullanımını maliyet sayacına yaz (tahmin değil).
     try:
         kaydet_kullanim(model or MODEL, message.usage.input_tokens,
@@ -693,7 +708,7 @@ def _hata_json(e):
     return jsonify({"error": "sunucu", "mesaj": mesaj}), kod
 
 
-SURUM = "nur-8"   # arayüz sürümü — dağıtımın gerçekten yenilendiğini doğrulamak için
+SURUM = "nur-9"   # arayüz sürümü — dağıtımın gerçekten yenilendiğini doğrulamak için
 
 
 @app.route("/")
