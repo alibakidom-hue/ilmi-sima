@@ -1204,7 +1204,7 @@ class NurYuz {
    İLM-İ SÎMÂ — uygulama katmanı
    ========================================================= */
 
-const SURUM = 'nur-17';
+const SURUM = 'nur-18';
 
 /* ---- ortam sorgusu: her tarayıcıda matchMedia yok ---- */
 function medya(q) {
@@ -1500,6 +1500,8 @@ function sekmeAc(id) {
   document.querySelectorAll('.sekme').forEach(x => x.classList.toggle('aktif', x.dataset.ekran === id));
   document.querySelectorAll('.ekran').forEach(x => x.classList.toggle('aktif', x.id === id));
   $('govde').scrollTop = 0;
+  // Sekme değişince konuşma sürüyorsa sustur.
+  if (id !== 'ekUstat') sesiSustur();
   Ses.tik();
   titre(6);
   if (id === 'ekUstat') divanAc();
@@ -1761,6 +1763,7 @@ function okuyanKur() {
 let sozT = null;
 function sozSoyle(yuz, metin, bitti) {
   clearTimeout(sozT);
+  sesiSustur(yuz);
   if (!yuz) { if (bitti) bitti(); return; }
   yuz.konusuyor = true;
   yuz.mimik('soyluyor');
@@ -2513,10 +2516,11 @@ function ustatBalon(metin, dokunus, seslendir) {
     `<div class="arac"><button class="dinle">♪ Dinle</button></div>`;
   d.querySelector('.soz').textContent = metin;
   if (dokunus) d.querySelector('.dokunus').textContent = dokunus;
-  d.querySelector('.dinle').addEventListener('click', () => seslendirMetin(metin + ' ' + (dokunus || '')));
+  const dinleBtn = d.querySelector('.dinle');
+  dinleBtn.addEventListener('click', () => seslendirMetin(metin + ' ' + (dokunus || ''), dinleBtn));
   $('sohbet').appendChild(d);
   kaydir();
-  if (seslendir !== false) seslendirMetin(metin + ' ' + (dokunus || ''));
+  if (seslendir !== false) seslendirMetin(metin + ' ' + (dokunus || ''), dinleBtn);
 }
 
 function kaydir() {
@@ -2547,6 +2551,7 @@ async function soruGonder() {
   hataTemiz('hataUstat');
   $('oneriler').innerHTML = '';
 
+  sesiSustur();
   kulBalon(soru);
   if (divanYuz) divanYuz.mimik('merak');
   sohbetGecmis.push({ kim: 'kul', metin: soru });
@@ -2588,6 +2593,23 @@ async function soruGonder() {
    oynatıp kilidini açmak, sonra kaynağını değiştirmek.
    --------------------------------------------------------- */
 let sesCtx = null, cozumleyici = null, sesKaynak = null, sesAcildi = false;
+let sesSira = 0;              // her seslendirme isteğine verilen sıra no
+let sesMetni = '';            // şu an çalınan metin (aynısına basınca durdurmak için)
+
+/* Çalan HER şeyi susturur: indirilen ses, tarayıcı sesi, sahte ağız.
+   Sıra numarasını artırmak, uçuşta olan indirmeleri de geçersiz kılar. */
+function sesiSustur(yuz) {
+  sesSira++;
+  sesMetni = '';
+  if (sesCalan) {
+    try { sesCalan.pause(); sesCalan.onended = null; sesCalan.src = ''; } catch (e) {}
+    sesCalan = null;
+  }
+  try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) {}
+  const y = yuz || divanYuz;
+  if (y) { y.agiz = 0; y.agizGen = 0; y.konusuyor = false; y.mimik('agirbasli'); }
+  document.querySelectorAll('.dinle').forEach(b => b.textContent = '♪ Dinle');
+}
 
 const SESSIZ = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAAB9AAACABAAZGF0YQAAAAA=';
 
@@ -2604,12 +2626,13 @@ function sesKilidiAc() {
 ['touchstart', 'mousedown', 'keydown'].forEach(o =>
   addEventListener(o, sesKilidiAc, { once: true, passive: true }));
 
-function agizSurucu(yuz) {
+function agizSurucu(yuz, benimSira) {
   if (!cozumleyici) return;
   const dalga = new Uint8Array(cozumleyici.fftSize);
   const tayf = new Uint8Array(cozumleyici.frequencyBinCount);
   let acikSu = 0, genSu = 0, kasSu = 0;
   const tik = () => {
+    if (benimSira !== sesSira) return;
     if (!sesCalan || sesCalan.paused || sesCalan.ended) {
       if (yuz) { yuz.agiz = 0; yuz.agizGen = 0; yuz.konusuyor = false; yuz.mimik('agirbasli'); }
       divanHal('Divan kuruldu');
@@ -2646,10 +2669,21 @@ function agizSurucu(yuz) {
   tik();
 }
 
-async function seslendirMetin(metin) {
+async function seslendirMetin(metin, dugme) {
   metin = (metin || '').trim();
   if (!metin) return;
-  if (sesCalan) { try { sesCalan.pause(); } catch (e) {} sesCalan = null; }
+
+  // Aynı metne tekrar basıldıysa durdur — düğme aç/kapa gibi davransın.
+  if (sesMetni === metin &&
+      (sesCalan || (window.speechSynthesis && speechSynthesis.speaking))) {
+    sesiSustur();
+    return;
+  }
+
+  sesiSustur();                 // önce çalan her şeyi sustur
+  const benimSira = ++sesSira;  // bu isteğin sıra numarası
+  sesMetni = metin;
+  if (dugme) dugme.textContent = '■ Durdur';
   const yuz = divanYuz;
 
   // ADIM 1 — dokunuş hâlâ geçerliyken elementin kilidini aç.
@@ -2681,12 +2715,15 @@ async function seslendirMetin(metin) {
     }
     blob = await r.blob();
     if (!blob || blob.size < 500) throw new Error('Ses dosyası boş geldi.');
+    // İndirme sürerken yeni bir seslendirme başladıysa bunu ÇALMA.
+    if (benimSira !== sesSira) { try { ses && ses.pause(); } catch (e2) {} return; }
   } catch (e) {
+    if (benimSira !== sesSira) return;          // artık güncel değil
     // Sessizce yutma: neden çalmadığını söyle, sonra tarayıcı sesini dene.
     if (yuz) yuz.konusuyor = false;
     divanHal('Divan kuruldu');
     mudde(String(e.message).slice(0, 90));
-    tarayiciSesi(metin, yuz);
+    tarayiciSesi(metin, yuz, benimSira, dugme);
     return;
   }
 
@@ -2695,7 +2732,13 @@ async function seslendirMetin(metin) {
     if (!ses) ses = new Audio();
     ses.src = URL.createObjectURL(blob);
     sesCalan = ses;
-    ses.onended = () => { if (yuz) { yuz.agiz = 0; yuz.konusuyor = false; } divanHal('Divan kuruldu'); };
+    ses.onended = () => {
+      if (benimSira !== sesSira) return;
+      sesMetni = '';
+      if (dugme) dugme.textContent = '♪ Dinle';
+      if (yuz) { yuz.agiz = 0; yuz.agizGen = 0; yuz.konusuyor = false; yuz.mimik('agirbasli'); }
+      divanHal('Divan kuruldu');
+    };
 
     // Çözümleyici SADECE bağlam gerçekten çalışıyorsa takılır. Askıdayken
     // takılırsa sesi kendi üzerine alır ve hiçbir şey duyulmaz.
@@ -2713,17 +2756,22 @@ async function seslendirMetin(metin) {
       }
     } catch (e) { cozumleyici = null; }
 
+    if (benimSira !== sesSira) { try { ses.pause(); } catch (e2) {} return; }
     await ses.play();
-    if (bagli && cozumleyici) agizSurucu(yuz); else sahteAgiz(yuz, ses);
+    if (bagli && cozumleyici) agizSurucu(yuz, benimSira); else sahteAgiz(yuz, ses, benimSira);
   } catch (e) {
+    if (benimSira !== sesSira) return;
+    sesMetni = '';
+    if (dugme) dugme.textContent = '♪ Dinle';
     if (yuz) yuz.konusuyor = false;
     divanHal('Divan kuruldu');
     mudde('Ses çalınamadı. Telefonun sessiz modda olabilir.');
   }
 }
 
-function sahteAgiz(yuz, ses) {
+function sahteAgiz(yuz, ses, benimSira) {
   const tik = () => {
+    if (benimSira != null && benimSira !== sesSira) return;
     if (!ses || ses.paused || ses.ended) {
       if (yuz) { yuz.agiz = 0; yuz.agizGen = 0; yuz.konusuyor = false; yuz.mimik('agirbasli'); }
       return;
@@ -2739,7 +2787,7 @@ function sahteAgiz(yuz, ses) {
   tik();
 }
 
-function tarayiciSesi(metin, yuz) {
+function tarayiciSesi(metin, yuz, benimSira, dugme) {
   if (!window.speechSynthesis) { if (yuz) yuz.konusuyor = false; divanHal('Divan kuruldu'); return; }
   if (yuz) yuz.konusuyor = true;
   const s = new SpeechSynthesisUtterance(metin);
@@ -2751,10 +2799,17 @@ function tarayiciSesi(metin, yuz) {
   s.pitch = 0.62;   // pesleştir
   s.rate = 0.9;     // ağırlaştır
   s.volume = 1;
-  s.onend = () => { if (yuz) { yuz.agiz = 0; yuz.konusuyor = false; } divanHal('Divan kuruldu'); };
+  s.onend = () => {
+    if (benimSira != null && benimSira !== sesSira) return;
+    sesMetni = '';
+    if (dugme) dugme.textContent = '♪ Dinle';
+    if (yuz) { yuz.agiz = 0; yuz.agizGen = 0; yuz.konusuyor = false; yuz.mimik('agirbasli'); }
+    divanHal('Divan kuruldu');
+  };
   speechSynthesis.cancel();
+  if (benimSira != null && benimSira !== sesSira) return;
   speechSynthesis.speak(s);
-  sahteAgiz(yuz, { get paused() { return !speechSynthesis.speaking; }, ended: false });
+  sahteAgiz(yuz, { get paused() { return !speechSynthesis.speaking; }, ended: false }, benimSira);
 }
 if (window.speechSynthesis) speechSynthesis.getVoices();
 
