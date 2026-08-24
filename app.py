@@ -717,7 +717,7 @@ def _hata_json(e):
     return jsonify({"error": "sunucu", "mesaj": mesaj}), kod
 
 
-SURUM = "nur-15"   # arayüz sürümü — dağıtımın gerçekten yenilendiğini doğrulamak için
+SURUM = "nur-16"   # arayüz sürümü — dağıtımın gerçekten yenilendiğini doğrulamak için
 
 
 @app.route("/")
