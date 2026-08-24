@@ -1598,3 +1598,4 @@ if __name__ == "__main__":
     print("\n  İlm-i Sîmâ sunucusu başlatılıyor...")
     print(f"  Lokal kullanım:  http://127.0.0.1:{port}\n")
     app.run(host="0.0.0.0", port=port, debug=False)
+
