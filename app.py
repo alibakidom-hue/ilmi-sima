@@ -408,7 +408,7 @@ MODEL_UCUZ = "claude-haiku-4-5-20251001"
 _SICAKLIK_DESTEKLI = True
 
 
-def gemini_json(parts, schema, max_tokens, uc="?", model=None, sicaklik=1.0):
+def gemini_json(parts, schema, max_tokens, uc="?", model=None, sicaklik=1.0, _tekrar=False):
     """İçerik parçalarını modele gönderip yapılandırılmış JSON döndürür.
     parts: metin (str) ve/veya image_part() ile üretilmiş görsel bloklarından oluşan liste.
     schema: beklenen JSON şeması (dict).
@@ -453,6 +453,15 @@ def gemini_json(parts, schema, max_tokens, uc="?", model=None, sicaklik=1.0):
     # bir kısmı sessizce boş kalır. Bunu yakalamadan döndürmek, kullanıcıya
     # boş bölümler göstermek demektir.
     if message.stop_reason == "max_tokens":
+        # Bütçe yetmedi. Kullanıcıya hata göstermek yerine bir kez daha,
+        # daha geniş bütçeyle dene. Bu, "yarıda kesildi" hatasının
+        # kullanıcıya ulaşmasını engelleyen emniyet ağıdır.
+        if not _tekrar:
+            import logging
+            logging.warning("Kiraat %s icin kesildi (%s token). Buyuk butceyle tekrar.",
+                            uc, max_tokens)
+            return gemini_json(parts, schema, int(max_tokens * 1.7),
+                               uc=uc, model=model, sicaklik=sicaklik, _tekrar=True)
         raise ValueError("kiraat_yarida_kesildi")
     for block in message.content:
         if block.type == "tool_use" and block.name == "yapilandirilmis_cevap":
@@ -708,7 +717,7 @@ def _hata_json(e):
     return jsonify({"error": "sunucu", "mesaj": mesaj}), kod
 
 
-SURUM = "nur-13"   # arayüz sürümü — dağıtımın gerçekten yenilendiğini doğrulamak için
+SURUM = "nur-15"   # arayüz sürümü — dağıtımın gerçekten yenilendiğini doğrulamak için
 
 
 @app.route("/")
@@ -1044,7 +1053,7 @@ gibi yargı DEĞİL. Yalnızca istenen JSON yapısında cevap ver."""
         result = gemini_json(
             karma_parts + [karma_prompt + (MULTI_ANGLE_NOTE if karma_angles > 1 else "")],
             KARMA_TOOL["input_schema"],
-            2800,
+            4000,
             uc="karma",
             sicaklik=0.25,
         )
@@ -1072,10 +1081,15 @@ gibi yargı DEĞİL. Yalnızca istenen JSON yapısında cevap ver."""
             result["ebced"] = ebced
         return jsonify(result)
 
+    except ValueError as e:
+        if "yarida_kesildi" in str(e):
+            return jsonify({"error": "kesildi",
+                            "mesaj": "Kıraat tamamlanamadı. Tekrar dene."}), 502
+        return jsonify({"error": str(e)}), 500
     except anthropic.APIError as e:
-        return jsonify({"error": f"API hatası: {str(e)}"}), 502
+        return jsonify({"error": "api", "mesaj": f"Bağlantı hatası: {str(e)[:120]}"}), 502
     except Exception as e:
-        return jsonify({"error": f"Beklenmeyen hata: {str(e)}"}), 500
+        return jsonify({"error": "genel", "mesaj": f"Beklenmeyen hata: {str(e)[:120]}"}), 500
 
 
 # ---- GÜNLÜK KIRAAT: her gün taze, kişiye özel yorum ----
@@ -1535,10 +1549,12 @@ def _sesler():
     liste = []
     for v in ham.get("voices", []):
         etiket = v.get("labels") or {}
+        tur = v.get("category")
         liste.append({
             "ad": v.get("name"),
             "voice_id": v.get("voice_id"),
-            "tur": v.get("category"),          # premade / cloned / generated ...
+            "tur": tur,
+            "ucretsizde_calisir": tur == "premade",
             "cinsiyet": etiket.get("gender"),
             "yas": etiket.get("age"),
             "tanim": etiket.get("description"),
@@ -1547,6 +1563,8 @@ def _sesler():
     # Erkek ve derin/olgun olanları öne al — üstat karakterine en yakınlar
     def puan(v):
         p = 0
+        if v.get("ucretsizde_calisir"):
+            p -= 20                      # ücretsizde çalışanlar en başa
         if (v.get("cinsiyet") or "").lower() == "male":
             p -= 4
         for k in ("deep", "calm", "mature", "narration", "old", "middle"):
@@ -1556,7 +1574,9 @@ def _sesler():
     liste.sort(key=puan)
     return jsonify({
         "kullanilabilir_ses_sayisi": len(liste),
-        "not": "Buradaki her voice_id API'den calisir. ELEVENLABS_VOICE_ID'ye birini yaz.",
+        "not": ("UCRETSIZ planda YALNIZCA 'ucretsizde_calisir: true' olanlar calisir. "
+                "Digerleri kutuphane sesidir ve 402 verir."),
+        "ucretsizde_calisan_sayisi": sum(1 for v in liste if v["ucretsizde_calisir"]),
         "sesler": liste,
     })
 
