@@ -339,6 +339,11 @@ body{background:var(--zemin)}
 }
 
 /* ---------- sohbet ---------- */
+.divan-kunye{
+  text-align:center;font-size:.7rem;letter-spacing:.14em;color:var(--sonuk);
+  padding:2px 0 10px;border-bottom:1px solid var(--cizgi);margin-bottom:14px
+}
+.divan-kunye:empty{display:none}
 .sohbet{padding:6px 0 4px;min-height:120px}
 .balon{margin-bottom:16px;animation:balonGir .45s cubic-bezier(.2,.7,.3,1)}
 @keyframes balonGir{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
@@ -659,11 +664,12 @@ input:focus{outline:none;border-color:var(--cizgi-guclu)}
         <canvas id="divanTuval" aria-label="Üstat"></canvas>
         <div class="divan-hal" id="divanHal">Divan kuruldu</div>
       </div>
+      <div class="divan-kunye" id="divanKunye"></div>
 
       <div id="ustatBos" hidden>
         <div class="bos-durum" style="padding:24px 10px 40px">
-          <div class="bd-ad">Üstat henüz sîmânı görmedi</div>
-          <div class="ipucu">Önce yüzünü okut; sonra ne sorarsan sor, cevabı sîmândan verir.</div>
+          <div class="bd-ad" id="ustatBosAd">Üstat henüz sîmânı görmedi</div>
+          <div class="ipucu" id="ustatBosIpucu">Önce yüzünü okut; sonra ne sorarsan sor.</div>
           <button class="dugme d-ince" id="ustatSimaBtn" style="margin-top:20px;max-width:260px;margin-inline:auto">Sîmâna bak</button>
         </div>
       </div>
@@ -1111,7 +1117,7 @@ class NurYuz {
    İLM-İ SÎMÂ — uygulama katmanı
    ========================================================= */
 
-const SURUM = 'nur-13';
+const SURUM = 'nur-15';
 
 /* ---- ortam sorgusu: her tarayıcıda matchMedia yok ---- */
 function medya(q) {
@@ -2245,9 +2251,32 @@ function kiraatOzeti() {
 }
 
 function divanAc() {
-  const varMi = !!(sonSonuc || D.al(A_ARSIV, []).length);
+  // Üstat ancak İKİSİ de hazırsa konuşur: sîmâ okuması ve doğum haritası.
+  // Yalnız yüzle konuşursa kullanıcı kimin/neyin yorumlandığını bilemiyor.
+  const simaVar = !!(sonSonuc || D.al(A_ARSIV, []).length);
+  const karma = sonKarma || D.al('sima_son_karma', null);
+  const dogum = D.al(A_DOGUM, null);
+  const varMi = simaVar && !!karma;
+
   gorunur($('ustatBos'), !varMi);
   gorunur($('ustatSohbet'), varMi);
+
+  // Eksik olanı açıkça söyle
+  if (!varMi) {
+    const eksik = !simaVar
+      ? 'Önce yüzünü okut. Üstat görmediği sîmâ hakkında konuşmaz.'
+      : 'Sîmân okundu. Şimdi doğum haritanı da ekle — üstat ikisini birleştirerek konuşur.';
+    $('ustatBosAd').textContent = !simaVar ? 'Üstat henüz sîmânı görmedi' : 'Bir adım kaldı';
+    $('ustatBosIpucu').textContent = eksik;
+    $('ustatSimaBtn').textContent = !simaVar ? 'Sîmâna bak' : 'Doğum haritamı ekle';
+  }
+
+  // Kimin kıraati açık — divanın altında yazsın
+  if (varMi) {
+    const ad = (dogum && dogum.name) ? dogum.name : '';
+    const tarih = dogum ? `${dogum.day}.${dogum.month}.${dogum.year}` : '';
+    $('divanKunye').textContent = [ad, tarih].filter(Boolean).join(' · ') || 'Kıraat hazır';
+  }
 
   if (!divanYuz) {
     // gez yüksek: üstat alanın içinde geniş bir yay çizerek dolaşır
@@ -2266,12 +2295,20 @@ function divanAc() {
   }
   setTimeout(() => divanYuz && divanYuz._boyut(), 60);
 
-  if (varMi && !sohbetGecmis.length) {
-    ustatBalon('Sîmânı okudum. Merak ettiğini sor — cevabını yüzünden veririm.', '', false);
+  // Balon SAYISINA bak: sohbetGecmis'e açılış sözü yazılmadığı için
+  // her sekme geçişinde yeniden basılıyordu.
+  if (varMi && $('sohbet') && $('sohbet').children.length === 0) {
+    ustatBalon('Sîmânı ve haritanı okudum. Merak ettiğini sor.', '', false);
     onerileriCiz();
   }
 }
-$('ustatSimaBtn').addEventListener('click', () => sekmeAc('ekSima'));
+$('ustatSimaBtn').addEventListener('click', () => {
+  sekmeAc('ekSima');
+  // Sîmâ zaten okunduysa doğrudan harita formuna götür
+  if ((sonSonuc || D.al(A_ARSIV, []).length) && $('karmaAcBtn') && !$('simaSonuc').hidden) {
+    setTimeout(() => $('karmaAcBtn').click(), 260);
+  }
+});
 
 function divanHal(metin) {
   const e = $('divanHal');
