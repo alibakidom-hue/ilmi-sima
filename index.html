@@ -478,6 +478,16 @@ input:focus{outline:none;border-color:var(--cizgi-guclu)}
 .bos-durum .bd-im{font-size:2rem;color:var(--sonuk);margin-bottom:16px}
 .bos-durum .bd-ad{font-family:var(--serif);font-size:1.1rem;color:var(--ikincil);margin-bottom:8px}
 
+/* ---------- çevrimdışı ---------- */
+.cevrimdisi{
+  display:none;align-items:center;gap:10px;padding:10px 20px;
+  background:rgba(180,85,63,.10);border-bottom:1px solid rgba(180,85,63,.32);
+  font-size:.8rem;color:#E3A794;line-height:1.45
+}
+.cevrimdisi.gor{display:flex}
+.cevrimdisi .im{flex:0 0 auto;opacity:.8}
+.kapali{opacity:.4;pointer-events:none}
+
 /* ---------- ortak ---------- */
 .brif{border:1px solid var(--cizgi);border-left-width:2px;border-radius:0 5px 5px 0;padding:15px 17px;margin-bottom:10px;background:var(--kat1)}
 .brif.iyi{border-left-color:var(--altin)}
@@ -534,6 +544,11 @@ input:focus{outline:none;border-color:var(--cizgi-guclu)}
       <button class="ikon-btn acik" id="sesBtn" aria-label="Sesi kapat">♪</button>
     </div>
   </header>
+
+  <div class="cevrimdisi" id="cevrimdisiSerit">
+    <span class="im">⛆</span>
+    <span>Bağlantı yok. Arşivin ve bugünün kıraati açık; yeni okuma için bağlanman gerek.</span>
+  </div>
 
   <main class="govde" id="govde">
 
@@ -1204,7 +1219,7 @@ class NurYuz {
    İLM-İ SÎMÂ — uygulama katmanı
    ========================================================= */
 
-const SURUM = 'nur-18';
+const SURUM = 'nur-20';
 
 /* ---- ortam sorgusu: her tarayıcıda matchMedia yok ---- */
 function medya(q) {
@@ -1408,9 +1423,13 @@ async function cagir(yol, govde, saniye) {
       signal: kes.signal
     });
   } catch (e) {
-    // Safari bunu 'Load failed' diye gosteriyor — kullaniciya bir sey anlatmiyor.
+    // Safari bunu 'Load failed' diye gösteriyor — kullanıcıya bir şey anlatmıyor.
     if (e.name === 'AbortError')
       throw new Error('Üstat çok uzun sustu. Bağlantın zayıf olabilir; tekrar dene.');
+    if (typeof navigator.onLine === 'boolean' && !navigator.onLine) {
+      agDurumu(false);
+      throw new Error('Bağlantı yok. Bağlandığında tekrar dene.');
+    }
     throw new Error('Sunucuya ulaşılamadı. Bağlantını kontrol edip tekrar dene.');
   } finally { clearTimeout(zaman); }
   const ham = await r.text();
@@ -1443,6 +1462,40 @@ async function cagirTekrarli(yol, govde, bilgi) {
     await new Promise(r => setTimeout(r, 6000));
     return await cagir(yol, govde);
   }
+}
+
+/* =========================================================
+   ÇEVRİMDIŞI DURUM
+   Sunucuya muhtaç işler: okuma, harita, eşleşme, sohbet, ses.
+   Cihazda duran işler: arşiv, bugünün kıraati, uygulamanın kendisi.
+   Bağlantı yokken ikinciler çalışmaya devam etmeli, birinciler
+   sessizce patlamak yerine sebebini söylemeli.
+   ========================================================= */
+var cevrimici = (typeof navigator.onLine === 'boolean') ? navigator.onLine : true;
+
+function agDurumu(acikMi) {
+  cevrimici = acikMi;
+  const s = document.getElementById('cevrimdisiSerit');
+  if (s) s.classList.toggle('gor', !acikMi);
+  // Ağ gerektiren düğmeleri kapat
+  ['okuBtn', 'karmaOkuBtn', 'esOkuBtn', 'soruBtn'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) b.classList.toggle('kapali', !acikMi);
+  });
+  const c = document.getElementById('cekAlan');
+  if (c) c.classList.toggle('kapali', !acikMi);
+  if (acikMi) uyandir();
+}
+addEventListener('online', () => agDurumu(true));
+addEventListener('offline', () => agDurumu(false));
+
+/* Ağ gerektiren her işin başında çağrılır. */
+function agVarMi(kutuId) {
+  if (cevrimici) return true;
+  if (kutuId) hata(kutuId, 'Bağlantı yok. Bu iş için internet gerekiyor — ' +
+                           'arşivine ve bugünün kıraatine bu arada bakabilirsin.');
+  else mudde('Bağlantı yok');
+  return false;
 }
 
 /* ---- sunucuyu uyandir ----
@@ -1564,7 +1617,29 @@ function gorselOku(dosya, enBoy) {
         cv.width = w; cv.height = h;
         cv.getContext('2d').drawImage(im, 0, 0, w, h);
         const url = cv.toDataURL('image/jpeg', .85);
-        coz({ url, b64: url.split(',')[1], w, h });
+
+        // Görsel ZATEN çözülmüş durumda; türevleri burada üretiyoruz.
+        // (Sonradan `new Image()` ile üretmek yükleme beklemediği için
+        //  boş kare veriyordu — arşiv küçük resimleri bu yüzden boştu.)
+        let kare = '', orta = '';
+        try {
+          const k = Math.min(im.width, im.height);
+          const kc = document.createElement('canvas'); kc.width = kc.height = 96;
+          kc.getContext('2d').drawImage(im, (im.width - k) / 2, (im.height - k) / 2,
+                                        k, k, 0, 0, 96, 96);
+          kare = kc.toDataURL('image/jpeg', .6);
+
+          // Arşivden harita okunabilsin diye orta boy bir kopya
+          const om = 560;
+          let ow = im.width, oh = im.height;
+          if (ow > oh && ow > om) { oh = Math.round(oh * om / ow); ow = om; }
+          else if (oh > om) { ow = Math.round(ow * om / oh); oh = om; }
+          const oc = document.createElement('canvas'); oc.width = ow; oc.height = oh;
+          oc.getContext('2d').drawImage(im, 0, 0, ow, oh);
+          orta = oc.toDataURL('image/jpeg', .72).split(',')[1];
+        } catch (e) {}
+
+        coz({ url, b64: url.split(',')[1], w, h, kare, orta });
       };
       im.src = ev.target.result;
     };
@@ -1844,6 +1919,7 @@ function asamaDurdur() {
 
 $('okuBtn').addEventListener('click', async () => {
   if (!anaGor) return;
+  if (!agVarMi('hataSima')) return;
   $('taramaCizgi').classList.add('calis');
   Ses.basla();
   simaDurum('simaOkunuyor');
@@ -1944,10 +2020,18 @@ $('karmaAcBtn').addEventListener('click', () => {
   }
   gorunur($('karmaDavet'), false);
   gorunur($('karmaForm'), true);
-  $('karmaForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  try { $('karmaForm').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
 });
 
 $('karmaOkuBtn').addEventListener('click', async () => {
+  // Harita okuması yüz fotoğrafını da ister. Arşivden açılan eski bir
+  // kıraatte fotoğraf saklanmamış olabilir — çökmek yerine söyle.
+  if (!agVarMi('hataSima')) return;
+  if (!anaGor || !anaGor.b64) {
+    hata('hataSima', 'Bu kıraatin fotoğrafı saklanmamış. ' +
+         'Haritayı okuyabilmem için yüzünü yeniden okut.');
+    return;
+  }
   const g = +$('kGun').value, a = +$('kAy').value, y = +$('kYil').value;
   if (!g || !a || !y) { hata('hataSima', 'Gün, ay ve yılı gir.'); return; }
   if (g < 1 || g > 31 || a < 1 || a > 12 || y < 1900 || y > 2030) {
@@ -2034,7 +2118,7 @@ function karmaCiz(d) {
   if ($('sohbet')) $('sohbet').innerHTML = '';
   gorunur($('karmaForm'), false);
   gorunur($('karmaSonuc'), true);
-  $('karmaSonuc').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  try { $('karmaSonuc').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
 }
 
 /* ---- paylaşım kartı: Story oranı, merak bırakır ---- */
@@ -2101,6 +2185,19 @@ function gunlukAc() {
   gorunur($('gunKurulum'), false);
   const c = D.al(A_GUNCEL, null);
   if (c && c.tarih === bugun() && c.veri) { gunlukCiz(c.veri); return; }
+  // Bağlantı yoksa: dünün kıraatini göstermek yanlış olur, ama elde bir şey
+  // varsa hiç yoktan iyidir — tarihiyle birlikte dürüstçe söylüyoruz.
+  if (!cevrimici) {
+    if (c && c.veri) {
+      gunlukCiz(c.veri);
+      $('gunTarih').textContent = 'Son kıraat — bağlantı gelince yenilenir';
+    } else {
+      gorunur($('gunYukleniyor'), false);
+      hata('hataGun', 'Bugünün kıraati için bağlantı gerekiyor. ' +
+                      'Bağlandığında burada seni bekliyor olacak.');
+    }
+    return;
+  }
   gunlukCek(b);
 }
 
@@ -2185,6 +2282,7 @@ let es1 = null, es2 = null;
 
 $('esOkuBtn').addEventListener('click', async () => {
   if (!es1 || !es2) return;
+  if (!agVarMi('hataEs')) return;
   hataTemiz('hataEs');
   gorunur($('esGiris'), false); gorunur($('esYukleniyor'), true); gorunur($('esSonuc'), false);
   Ses.basla();
@@ -2228,20 +2326,30 @@ function arsiveEkle(d) {
     hukum: d.hukum_cumlesi || d.dominantTraitTR || '',
     karma: sonKarma || null,
     mizac: d.dominantTraitTR || '',
-    gorsel: anaGor ? kucukKare(anaGor.url) : '',
+    gorsel: (anaGor && anaGor.kare) || '',
+    yuzB64: (anaGor && anaGor.orta) || '',   // haritayı sonradan okuyabilmek için
     veri: d
   });
-  D.yaz(A_ARSIV, a.slice(0, 20));
+  arsivYaz(a.slice(0, 20));
 }
-function kucukKare(url) {
-  try {
-    const im = new Image(); im.src = url;
-    const c = document.createElement('canvas'); c.width = c.height = 96;
-    const x = c.getContext('2d');
-    const k = Math.min(im.width, im.height) || 96;
-    x.drawImage(im, (im.width - k) / 2, (im.height - k) / 2, k, k, 0, 0, 96, 96);
-    return c.toDataURL('image/jpeg', .6);
-  } catch (e) { return ''; }
+
+/* localStorage sınırlı. Yer dolarsa en eski kayıtların büyük görselini
+   düşürerek tekrar dener; en son çare kayıt sayısını azaltır. */
+function arsivYaz(a) {
+  try { localStorage.setItem(A_ARSIV, JSON.stringify(a)); return true; }
+  catch (e) {}
+  for (let i = a.length - 1; i >= 0; i--) {
+    if (!a[i].yuzB64) continue;
+    a[i].yuzB64 = '';
+    try { localStorage.setItem(A_ARSIV, JSON.stringify(a)); return true; }
+    catch (e2) {}
+  }
+  while (a.length > 3) {
+    a.pop();
+    try { localStorage.setItem(A_ARSIV, JSON.stringify(a)); return true; }
+    catch (e3) {}
+  }
+  return false;
 }
 function arsivCiz() {
   const a = D.al(A_ARSIV, []);
@@ -2262,6 +2370,10 @@ function arsivCiz() {
     if (!k) return;
     if (!k.veri._id) k.veri._id = 'a' + k.id;
     sonSonuc = k.veri;
+    // Haritayı bu kıraat için okuyabilmek adına yüzü de geri yükle
+    anaGor = k.yuzB64 ? { b64: k.yuzB64, url: 'data:image/jpeg;base64,' + k.yuzB64 } : null;
+    gorR = gorL = gorH = null;
+    sonOlcum = null;
     sonKarma = k.karma || null;
     if (sonKarma) D.yaz('sima_son_karma', sonKarma); else D.sil('sima_son_karma');
     sonucCiz(k.veri);
@@ -2545,6 +2657,7 @@ async function soruGonder() {
   const g = $('soruGiris');
   const soru = g.value.trim();
   if (!soru || sorUcuyor) return;
+  if (!agVarMi('hataUstat')) return;
   sorUcuyor = true;
   $('soruBtn').disabled = true;
   g.value = ''; g.style.height = 'auto';
@@ -2681,6 +2794,7 @@ async function seslendirMetin(metin, dugme) {
   }
 
   sesiSustur();                 // önce çalan her şeyi sustur
+  if (!cevrimici) { mudde('Ses için bağlantı gerekiyor'); return; }
   const benimSira = ++sesSira;  // bu isteğin sıra numarası
   sesMetni = metin;
   if (dugme) dugme.textContent = '■ Durdur';
@@ -2814,6 +2928,7 @@ function tarayiciSesi(metin, yuz, benimSira, dugme) {
 if (window.speechSynthesis) speechSynthesis.getVoices();
 
 /* ---- açılışta durum ---- */
+agDurumu(cevrimici);
 (function baslangic() {
   const b = D.al(A_DOGUM, null);
   const c = D.al(A_GUNCEL, null);
