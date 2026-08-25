@@ -717,7 +717,7 @@ def _hata_json(e):
     return jsonify({"error": "sunucu", "mesaj": mesaj}), kod
 
 
-SURUM = "nur-18"   # arayüz sürümü — dağıtımın gerçekten yenilendiğini doğrulamak için
+SURUM = "nur-20"   # arayüz sürümü — dağıtımın gerçekten yenilendiğini doğrulamak için
 
 
 @app.route("/")
@@ -785,43 +785,94 @@ def manifest():
 
 # Belge için ağ önceliği (eski arayüz takılı kalmasın), varlıklar için önbellek.
 SW_JS = """
-const AD = 'sima-%s';
-const VARLIK = ['/varlik/ikon-192.png', '/varlik/apple-touch-icon.png', '/varlik/favicon.png'];
+const AD = 'sima-__SURUM__';
+
+// Uygulamanın çevrimdışı açılması için gereken en küçük küme.
+const KABUK = [
+  '/',
+  '/varlik/ikon-192.png',
+  '/varlik/apple-touch-icon.png',
+  '/varlik/favicon.png',
+  '/manifest.webmanifest',
+];
+
+// Dışarıdan gelen ama uygulamanın görünümü için şart olan kaynaklar
+const DIS_ALAN = ['fonts.googleapis.com', 'fonts.gstatic.com', 'cdn.jsdelivr.net'];
 
 self.addEventListener('install', e => {
   self.skipWaiting();
-  e.waitUntil(caches.open(AD).then(c => c.addAll(VARLIK)).catch(() => {}));
+  e.waitUntil(caches.open(AD).then(c => c.addAll(KABUK)).catch(() => {}));
 });
 
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(k =>
-    Promise.all(k.filter(x => x !== AD).map(x => caches.delete(x)))).then(() => self.clients.claim()));
+  e.waitUntil(
+    caches.keys()
+      .then(k => Promise.all(k.filter(x => x !== AD).map(x => caches.delete(x))))
+      .then(() => self.clients.claim())
+  );
 });
 
 self.addEventListener('fetch', e => {
   const r = e.request;
-  if (r.method !== 'GET') return;
+  if (r.method !== 'GET') return;                 // POST'lar (okuma, sohbet) asla önbelleğe girmez
   const u = new URL(r.url);
-  if (u.origin !== location.origin) return;
 
-  // Belge: her zaman ağdan. Ağ yoksa son çare önbellek.
+  // 1) BELGE: önce ağ (taze arayüz), ağ yoksa önbellekteki son sürüm.
   if (r.mode === 'navigate') {
-    e.respondWith(fetch(r).catch(() => caches.match('/') || new Response(
-      '<h1 style="font-family:serif;color:#C9A84C;background:#0A0908;padding:40px">' +
-      'Bağlantı yok. Üstat çevrimdışı okuyamaz.</h1>',
-      { headers: { 'Content-Type': 'text/html; charset=utf-8' } })));
+    e.respondWith(
+      fetch(r)
+        .then(res => {
+          const kopya = res.clone();
+          caches.open(AD).then(c => c.put('/', kopya)).catch(() => {});
+          return res;
+        })
+        .catch(() => caches.match('/').then(c => c || cevrimdisiSayfa()))
+    );
     return;
   }
-  // Varlıklar: önce önbellek.
-  if (u.pathname.startsWith('/varlik/')) {
-    e.respondWith(caches.match(r).then(c => c || fetch(r).then(res => {
-      const kopya = res.clone();
-      caches.open(AD).then(ch => ch.put(r, kopya)).catch(() => {});
-      return res;
-    })));
+
+  // 2) KENDİ VARLIKLARIMIZ: önce önbellek.
+  if (u.origin === location.origin && u.pathname.startsWith('/varlik/')) {
+    e.respondWith(
+      caches.match(r).then(c => c || fetch(r).then(res => {
+        const kopya = res.clone();
+        caches.open(AD).then(ch => ch.put(r, kopya)).catch(() => {});
+        return res;
+      }))
+    );
+    return;
+  }
+
+  // 3) YAZI TİPİ ve KÜTÜPHANELER: önbellekten ver, arkada tazele.
+  if (DIS_ALAN.some(d => u.hostname.endsWith(d))) {
+    e.respondWith(
+      caches.match(r).then(c => {
+        const ag = fetch(r).then(res => {
+          if (res && res.status === 200) {
+            const kopya = res.clone();
+            caches.open(AD).then(ch => ch.put(r, kopya)).catch(() => {});
+          }
+          return res;
+        }).catch(() => c);
+        return c || ag;
+      })
+    );
   }
 });
-""" % SURUM
+
+function cevrimdisiSayfa() {
+  return new Response(
+    '<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1"></head>' +
+    '<body style="margin:0;height:100vh;display:grid;place-items:center;' +
+    'background:#0A0908;color:#C9A84C;font-family:Georgia,serif;text-align:center;padding:30px">' +
+    '<div><div style="font-size:1.4rem;margin-bottom:14px">Bağlantı yok</div>' +
+    '<div style="color:#A79E8C;font-size:.95rem;line-height:1.6">Üstat çevrimdışı okuyamaz.<br>' +
+    'Bağlandığında yeniden dene.</div></div></body></html>',
+    { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+  );
+}
+""".replace("__SURUM__", SURUM)
 
 
 @app.route("/sw.js")
