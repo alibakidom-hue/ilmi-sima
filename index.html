@@ -191,6 +191,16 @@ body{background:var(--zemin)}
   font-size:.76rem;line-height:1.55;color:var(--silik)
 }
 .gizlilik b{color:var(--ikincil);font-weight:400}
+.gizlilik details{margin-top:7px}
+.gizlilik summary{
+  cursor:pointer;color:var(--ikincil);text-decoration:underline;
+  text-underline-offset:3px;list-style:none;display:inline-block
+}
+.gizlilik summary::-webkit-details-marker{display:none}
+.gizlilik summary::after{content:' \25BE'}
+.gizlilik details[open] summary::after{content:' \25B4'}
+.gizlilik details ul{margin:8px 0 0;padding-left:16px}
+.gizlilik details li{margin-bottom:5px}
 
 /* ---------- önizleme ---------- */
 .onizleme{position:relative;border-radius:6px;overflow:hidden;background:#000;margin-top:6px}
@@ -568,7 +578,25 @@ input:focus{outline:none;border-color:var(--cizgi-guclu)}
         <input type="file" id="anaDosya" accept="image/*" capture="user" hidden>
         <div class="gizlilik">
           <span style="color:var(--sonuk)">⛨</span>
-          <span><b>Fotoğrafın sunucuda saklanmaz.</b> Okuma biter bitmez silinir, kimseyle paylaşılmaz.</span>
+          <span><b>Fotoğrafın, kıraati üretmek için Anthropic'in (ABD) yapay zekâ servisine gönderilir.</b>
+            Bizim sunucumuzda saklanmaz. Kıraatin ve fotoğrafın yalnızca senin cihazında, Arşiv
+            bölümünde tutulur — Arşiv'den sildiğinde gider.
+            <details>
+              <summary>Verin tam olarak nereye gidiyor</summary>
+              <ul>
+                <li>Yüz görüntün <b>Anthropic</b> (ABD) sunucularında işlenir; kıraat oradan döner.
+                    Yani fotoğrafın yurt dışına aktarılır.</li>
+                <li>Sesli okumada <b>ElevenLabs</b>'e yalnızca <b>metin</b> gider; fotoğraf gitmez.</li>
+                <li>68 yüz noktası ve 13 ölçüm <b>senin tarayıcında</b> hesaplanır, sunucuya çıkmaz.</li>
+                <li>Bizim sunucumuzda veritabanı yoktur; fotoğrafın diske yazılmaz, kimlikle eşleştirilmez.</li>
+                <li>Arşiv, günlük kıraat ve seri kayıtların tarayıcının <b>localStorage</b> alanında,
+                    yalnızca bu cihazda durur. Tarayıcı verisini temizlersen hepsi silinir.</li>
+                <li>Yüz görüntüsü Türkiye'de <b>özel nitelikli (biyometrik) kişisel veri</b> sayılır.
+                    Bu uygulama kültürel ve eğlence amaçlıdır; tıbbi, hukuki ya da işe alım amacıyla
+                    kullanılamaz.</li>
+              </ul>
+            </details>
+          </span>
         </div>
       </div>
 
@@ -833,7 +861,7 @@ input:focus{outline:none;border-color:var(--cizgi-guclu)}
   <option>Düzce</option>
 </datalist>
 
-<script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/dist/face-api.js"></script>
 <script>
 class NurYuz {
   /* NÛR — hatsız sîmâ.
@@ -1219,7 +1247,7 @@ class NurYuz {
    İLM-İ SÎMÂ — uygulama katmanı
    ========================================================= */
 
-const SURUM = 'nur-20';
+const SURUM = 'nur-21';
 
 /* ---- ortam sorgusu: her tarayıcıda matchMedia yok ---- */
 function medya(q) {
@@ -1653,7 +1681,7 @@ async function modelYukle() {
   if (modelHazir || modelDeniyor || typeof faceapi === 'undefined') return modelHazir;
   modelDeniyor = true;
   try {
-    const u = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
+    const u = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/model';
     await faceapi.nets.tinyFaceDetector.loadFromUri(u);
     await faceapi.nets.faceLandmark68Net.loadFromUri(u);
     modelHazir = true;
